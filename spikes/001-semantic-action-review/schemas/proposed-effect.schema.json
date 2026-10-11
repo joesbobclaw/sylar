@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sylar.local/schemas/proposed-effect.schema.json",
+  "title": "ProposedEffect",
+  "type": "object",
+  "required": ["schemaVersion", "id", "actor", "request", "operation", "recipients", "dataClasses", "reversibility", "authorization", "expectedResult", "ruleSet", "idempotencyKey"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "minLength": 1 },
+    "actor": { "type": "object", "required": ["id", "type"], "properties": { "id": { "type": "string", "minLength": 1 }, "type": { "enum": ["human", "agent", "automation"] } }, "additionalProperties": false },
+    "request": { "type": "object", "required": ["source", "instruction"], "properties": { "source": { "type": "string", "minLength": 1 }, "instruction": { "type": "string", "minLength": 1 } }, "additionalProperties": false },
+    "operation": {
+      "type": "object", "required": ["kind", "tool", "action", "target", "parameters"],
+      "properties": {
+        "kind": { "enum": ["read", "message_send", "external_post", "file_write", "file_delete", "payment", "credential_change", "permission_change", "software_install", "connector_write"] },
+        "tool": { "type": "string", "minLength": 1 }, "action": { "type": "string", "minLength": 1 }, "target": { "type": "string", "minLength": 1 }, "parameters": { "type": "object" }
+      }, "additionalProperties": false
+    },
+    "recipients": { "type": "array", "items": { "type": "object", "required": ["id", "scope"], "properties": { "id": { "type": "string", "minLength": 1 }, "scope": { "enum": ["self", "private", "team", "public", "external"] } }, "additionalProperties": false } },
+    "dataClasses": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "reversibility": { "enum": ["reversible", "partially_reversible", "irreversible"] },
+    "authorization": {
+      "type": "object", "required": ["structuralAllowed"],
+      "properties": {
+        "structuralAllowed": { "type": "boolean" }, "userAuthorization": { "type": ["string", "null"] },
+        "priorApproval": { "type": "object", "required": ["effectDigest", "ruleSetVersion"], "properties": { "effectDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "ruleSetVersion": { "type": "string", "minLength": 1 } }, "additionalProperties": false }
+      }, "additionalProperties": false
+    },
+    "expectedResult": { "type": "string", "minLength": 1 },
+    "ruleSet": { "type": "object", "required": ["version", "rules"], "properties": { "version": { "type": "string", "minLength": 1 }, "rules": { "type": "array", "items": { "type": "object", "required": ["id", "text"], "properties": { "id": { "type": "string", "minLength": 1 }, "text": { "type": "string", "minLength": 1 } }, "additionalProperties": false } } }, "additionalProperties": false },
+    "riskSignals": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "idempotencyKey": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false
+}

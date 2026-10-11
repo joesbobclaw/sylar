@@ -1,0 +1,15 @@
+{
+  "name": "sylar-sar-spike",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shadow-only semantic action review feasibility spike",
+  "scripts": {
+    "test": "node --test",
+    "evaluate": "node src/cli.mjs --reviewer heuristic",
+    "evaluate:model": "node src/cli.mjs --reviewer model"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

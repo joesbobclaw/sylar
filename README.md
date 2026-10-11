@@ -49,6 +49,7 @@ Source systems:
 
 ## Start here
 
+- [Runnable SAR feasibility spike](spikes/001-semantic-action-review/)
 - [Evidence baseline](docs/evidence-baseline.md)
 - [Reference architecture](docs/architecture.md)
 - [Roadmap](docs/roadmap.md)
