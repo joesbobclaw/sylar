@@ -59,6 +59,14 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
     logicalGroups.set(key, group);
   }
   const logicalPaired = [...logicalGroups.values()].filter((group) => group.some((proposal) => actualIds.has(proposal.eventId))).length;
+  const actualById = new Map(actuals.map((record) => [record.eventId, record]));
+  const logicalOutcomes = [...logicalGroups.values()].map((group) => {
+    const actual = group.map((proposal) => actualById.get(proposal.eventId)).find(Boolean);
+    if (!actual) return "outcome_unknown";
+    return actual.result?.status === "error" ? "error" : "completed";
+  });
+  const outcomeUnknown = logicalOutcomes.filter((status) => status === "outcome_unknown").length;
+  const outcomeUnknownRate = logicalGroups.size ? outcomeUnknown / logicalGroups.size : null;
   const unknown = proposals.filter((record) => record.tool?.classification?.kind === "unknown");
   const schemaDrift = [...new Set(selected.flatMap((record) => paths(record)).filter((path) => !ALLOWED_SCHEMA_V2_PATHS.has(path)))].sort();
   const invalidMode = selected.filter((record) => record.mode !== "shadow" || record.enforced !== false).length;
@@ -87,13 +95,18 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
     },
     execution: {
       errors: actuals.filter((record) => record.result?.errorPresent === true).length,
+      logicalOutcomes: countBy(logicalOutcomes),
+      outcomeUnknown,
+      outcomeUnknownRate,
+      outcomeAccountingRate: logicalGroups.size ? (logicalGroups.size - outcomeUnknown) / logicalGroups.size : null,
       durationMs: { p50: percentile(durations, 0.50), p95: percentile(durations, 0.95), max: durations.length ? Math.max(...durations) : null },
-      note: "Execution duration is tool runtime, not SAR hook overhead.",
+      note: "A mature proposal without a post-hook is outcome_unknown, never completed. Execution duration is tool runtime, not SAR hook overhead.",
     },
     privacy: { schemaDrift, invalidMode },
     gates: {
       enoughTraffic: proposals.length >= 500,
       pairing: logicalPairingRate !== null && logicalPairingRate >= 0.99,
+      outcomeAccounting: outcomeUnknownRate !== null && outcomeUnknownRate <= 0.01,
       duplicateHooks: mature.length > 0 && duplicateProposals / mature.length <= 0.01,
       classificationCoverage: unknownRate !== null && unknownRate <= 0.01,
       schemaStable: schemaDrift.length === 0,
@@ -104,6 +117,7 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
     blockers: [
       ...(proposals.length >= 500 ? [] : ["fewer-than-500-proposals"]),
       ...(logicalPairingRate !== null && logicalPairingRate >= 0.99 ? [] : ["logical-pairing-below-99-percent"]),
+      ...(outcomeUnknownRate !== null && outcomeUnknownRate <= 0.01 ? [] : ["outcome-unknown-above-1-percent"]),
       ...(mature.length > 0 && duplicateProposals / mature.length <= 0.01 ? [] : ["duplicate-hook-observation-above-1-percent"]),
       ...(unknownRate !== null && unknownRate <= 0.01 ? [] : ["unknown-classification-above-1-percent"]),
       ...(schemaDrift.length === 0 ? [] : ["schema-drift-detected"]),

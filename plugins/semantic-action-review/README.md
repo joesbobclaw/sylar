@@ -58,6 +58,11 @@ sample size. Tool execution duration is reported separately and must not be
 misrepresented as SAR hook overhead; the local benchmark measures the plugin's
 own paired audit path.
 
+Every mature logical proposal is assigned one outcome-accounting state:
+`completed`, `error`, or `outcome_unknown`. A missing post-hook is always
+`outcome_unknown`; it is never inferred to be successful. Enforcement remains
+blocked if more than 1% of mature logical proposals have unknown outcomes.
+
 Expected runtime surface: exactly two typed hooks (`before_tool_call` and
 `after_tool_call`), with prompt injection and conversation access denied.
 

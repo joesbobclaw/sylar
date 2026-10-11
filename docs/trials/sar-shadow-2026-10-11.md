@@ -47,6 +47,14 @@ case. The collector needs an explicit `outcome_unknown` timeout state, and the
 promotion metric must distinguish completed/error results from missing-hook or
 restart outcomes.
 
+After adding explicit logical outcome accounting, the post-fix stream at
+`2026-10-11T07:11:18Z` contained 128 mature logical proposals: 123 completed,
+2 errored, and 3 `outcome_unknown`. Outcome accounting was therefore 97.66%,
+below the 99% enforcement gate. Duplicate delivery was 0%, unknown tool
+classification was 0.72%, schema drift was 0, and the plugin remained entirely
+shadow-only. These observations confirm the new gate is working; they do not
+justify enforcement or explain the three missing post-hooks.
+
 ## Verdict
 
 **NOT READY FOR ENFORCEMENT.** Remaining gates:
@@ -64,3 +72,31 @@ The redacted audit stream alone cannot support semantic human labeling because
 it intentionally excludes recipients, content, paths, and commands. The next
 design step is a bounded, ephemeral review envelope whose raw values never enter
 the JSONL audit log.
+
+## Ephemeral semantic-review envelope
+
+The envelope is a separate, memory-only path for human/model labeling. It is
+not an audit record and never passes through `JsonlAuditSink`.
+
+- **Contents:** raw proposed action values plus the opaque audit `eventId`, held
+  only long enough to produce a semantic label.
+- **Bounds:** maximum 100 concurrent envelopes, 256 KiB per envelope, 8 MiB
+  total, and a five-minute hard TTL. Admission fails closed when any bound is
+  exceeded.
+- **Access:** a tool-less reviewer receives one envelope at a time. No prompt,
+  conversation history, secrets API, filesystem, network, or execution tools
+  are available. The reviewer may return only the fixed decision schema and a
+  short rationale.
+- **Lifecycle:** delete on label, timeout, cancellation, or process shutdown.
+  Restart loses all envelopes by design. Durable telemetry stores only the
+  label, reviewer status, latency bucket, and opaque event correlation.
+- **Privacy proof:** adversarial fixtures must assert that recipients, content,
+  commands, URLs, paths, identifiers, and raw key names are absent from JSONL,
+  logs, errors, metrics, and reviewer metadata.
+- **Authority:** review stays shadow-only. A semantic result cannot widen the
+  deterministic policy decision or cause execution.
+
+Implementation should remain disconnected from the live plugin until the
+envelope bounds, expiry, non-persistence, crash behavior, and redaction tests
+pass. Human labels collected through it must be sampled after the exact
+post-fix deployment boundary.

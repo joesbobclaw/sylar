@@ -77,9 +77,41 @@ test("shadow report fails closed on unknown coverage, pairing, and schema drift"
   };
   const report = buildShadowReport([{ ...proposal, unexpected: "forbidden" }], { now: Date.parse("2026-01-02T00:00:00.000Z") });
   assert.equal(report.pairing.rate, 0);
+  assert.equal(report.execution.outcomeUnknown, 1);
+  assert.equal(report.execution.outcomeUnknownRate, 1);
+  assert.equal(report.execution.outcomeAccountingRate, 0);
+  assert.deepEqual(report.execution.logicalOutcomes, [{ value: "outcome_unknown", count: 1 }]);
+  assert.equal(report.gates.outcomeAccounting, false);
+  assert.equal(report.blockers.includes("outcome-unknown-above-1-percent"), true);
   assert.equal(report.coverage.unknownRate, 1);
   assert.deepEqual(report.privacy.schemaDrift, ["unexpected"]);
   assert.equal(report.verdict, "NOT_READY_FOR_ENFORCEMENT");
+});
+
+test("logical outcome accounting distinguishes completed, error, and missing post-hooks", () => {
+  const timestamp = "2026-01-01T00:00:00.000Z";
+  const proposal = (eventId, toolCall) => ({
+    schemaVersion: 2, recordType: "proposed_effect", timestamp, eventId, mode: "shadow", enforced: false,
+    tool: { name: "exec", classification: { kind: "code_execution", consequential: true, reason: "test" } },
+    correlation: { run: "run", toolCall, session: "session" },
+  });
+  const actual = (eventId, status, errorPresent) => ({
+    schemaVersion: 2, recordType: "actual_effect", timestamp, eventId, mode: "shadow", enforced: false,
+    tool: { name: "exec", observedName: "exec", nameChanged: false },
+    result: { status, durationMs: 1, shape: { type: "undefined" }, errorPresent },
+  });
+  const report = buildShadowReport([
+    proposal("completed", "call-1"), actual("completed", "completed", false),
+    proposal("error", "call-2"), actual("error", "error", true),
+    proposal("missing", "call-3"),
+  ], { now: Date.parse("2026-01-02T00:00:00.000Z") });
+  assert.deepEqual(report.execution.logicalOutcomes, [
+    { value: "completed", count: 1 },
+    { value: "error", count: 1 },
+    { value: "outcome_unknown", count: 1 },
+  ]);
+  assert.equal(report.execution.outcomeUnknown, 1);
+  assert.equal(report.execution.outcomeAccountingRate, 2 / 3);
 });
 
 test("corrected aliases do not fall into unknown review", () => {
