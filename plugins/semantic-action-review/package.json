@@ -1,0 +1,16 @@
+{
+  "name": "sylar-semantic-action-review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Shadow-only semantic action review telemetry for OpenClaw",
+  "openclaw": {
+    "extensions": ["./index.js"],
+    "compat": { "pluginApi": ">=2026.9.1" }
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check index.js && node --check src/normalizer.js && node --check src/redaction.js && node --check src/audit-sink.js"
+  },
+  "engines": { "node": ">=22" }
+}

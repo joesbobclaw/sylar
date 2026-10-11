@@ -1,0 +1,20 @@
+{
+  "id": "sylar-semantic-action-review",
+  "name": "Sylar Semantic Action Review",
+  "description": "Shadow-only, redacted audit telemetry for consequential OpenClaw tool calls",
+  "activation": { "onStartup": true },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "enabled": { "type": "boolean", "default": true },
+      "auditPath": { "type": "string" },
+      "includeReads": { "type": "boolean", "default": false }
+    }
+  },
+  "uiHints": {
+    "enabled": { "label": "Enabled", "help": "Collect redacted SAR shadow telemetry." },
+    "auditPath": { "label": "Audit path", "help": "Absolute JSONL path. Defaults to ~/.openclaw/audit/sar-shadow.jsonl.", "advanced": true },
+    "includeReads": { "label": "Include reads", "help": "Record read-only calls as well as mutations.", "advanced": true }
+  }
+}

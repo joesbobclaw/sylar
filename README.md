@@ -49,6 +49,7 @@ Source systems:
 
 ## Start here
 
+- [Shadow SAR OpenClaw plugin](plugins/semantic-action-review/)
 - [Runnable SAR feasibility spike](spikes/001-semantic-action-review/)
 - [Evidence baseline](docs/evidence-baseline.md)
 - [Reference architecture](docs/architecture.md)
@@ -57,7 +58,7 @@ Source systems:
 
 ## Status
 
-This repository contains specifications, not production code. Each ability has an explicit maturity state and a falsifiable acquisition test. The first implementation target is semantic action review because it becomes safety infrastructure for nearly every later capability.
+This repository contains specifications plus an experimental, shadow-only SAR plugin. The plugin is deployed for telemetry but cannot enforce, approve, block, or rewrite tool calls. Each ability has an explicit maturity state and a falsifiable acquisition test.
 
 ## License
 
