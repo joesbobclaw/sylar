@@ -7,6 +7,7 @@ import { JsonlAuditSink } from "../src/audit-sink.js";
 import { classifyToolCall, normalizeBeforeToolCall } from "../src/normalizer.js";
 import { containsRawValue } from "../src/redaction.js";
 import { createSarRuntime } from "../src/runtime.js";
+import { buildShadowReport } from "../src/shadow-report.js";
 
 const context = {
   agentId: "agent:test",
@@ -56,6 +57,38 @@ test("classification defaults unknown tools into review", () => {
   });
   assert.equal(classifyToolCall({ toolName: "web_search", params: {} }).consequential, false);
   assert.equal(classifyToolCall({ toolName: "message", params: { action: "react" } }).consequential, false);
+  assert.equal(classifyToolCall({ toolName: "progress_card", params: {} }).consequential, false);
+  assert.equal(classifyToolCall({ toolName: "openclawgateway_exec", params: {} }).kind, "code_execution");
+  assert.equal(classifyToolCall({ toolName: "process", params: {} }).kind, "code_execution");
+  assert.equal(classifyToolCall({ toolName: "openclawmemory_search", params: {} }).kind, "read");
+  assert.equal(classifyToolCall({ toolName: "heartbeat_respond", params: { notify: false } }).consequential, false);
+  assert.equal(classifyToolCall({ toolName: "heartbeat_respond", params: { notify: true } }).kind, "notification_send");
+  assert.equal(classifyToolCall({ toolName: "skill_workshop", params: {} }).kind, "capability_mutation");
+});
+
+test("shadow report fails closed on unknown coverage, pairing, and schema drift", () => {
+  const timestamp = "2026-01-01T00:00:00.000Z";
+  const proposal = {
+    schemaVersion: 2, recordType: "proposed_effect", timestamp, eventId: "one", mode: "shadow", enforced: false,
+    tool: { name: "future_tool", kind: null, inputKind: null, classification: { kind: "unknown", consequential: true, reason: "unknown-tools-fail-into-review" }, parameterShape: { keyCount: 0, fields: [], truncated: false }, derivedPathCount: 0 },
+    actor: { agentId: "main", requesterProven: true, requesterOwner: true, channel: "test", roleCount: 0 },
+    correlation: { run: "opaque", toolCall: "opaque", session: "opaque" },
+    policy: { rulesVersion: "shadow-2", semanticReviewCandidate: true, shadowRecommendation: "review", reason: "unknown-tools-fail-into-review" },
+  };
+  const report = buildShadowReport([{ ...proposal, unexpected: "forbidden" }], { now: Date.parse("2026-01-02T00:00:00.000Z") });
+  assert.equal(report.pairing.rate, 0);
+  assert.equal(report.coverage.unknownRate, 1);
+  assert.deepEqual(report.privacy.schemaDrift, ["unexpected"]);
+  assert.equal(report.verdict, "NOT_READY_FOR_ENFORCEMENT");
+});
+
+test("corrected aliases do not fall into unknown review", () => {
+  for (const toolName of ["openclawgateway_exec", "openclawgateway_process", "process"]) {
+    assert.notEqual(classifyToolCall({ toolName, params: {} }).kind, "unknown");
+  }
+  for (const toolName of ["progress_card", "openclawmemory_search"]) {
+    assert.equal(classifyToolCall({ toolName, params: {} }).consequential, false);
+  }
 });
 
 test("runtime records a paired proposal/result and never returns a policy decision", async () => {
@@ -78,6 +111,20 @@ test("runtime records a paired proposal/result and never returns a policy decisi
   for (const secret of [params.target, params.body, "result-secret-9513"]) assert.equal(serialized.includes(secret), false);
   assert.equal((await stat(auditPath)).mode & 0o777, 0o600);
   assert.equal((await stat(dir)).mode & 0o777, 0o700);
+});
+
+test("runtime deduplicates wrapper and inner before hooks with the same tool-call id", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sylar-sar-"));
+  const auditPath = join(dir, "dedupe.jsonl");
+  const runtime = createSarRuntime({ config: { auditPath }, processSalt: "test-salt", logger: { error() {} } });
+  await runtime.before({ toolName: "openclawgateway_exec", toolCallId: "same-call", params: { command: "private-one" } }, context);
+  await runtime.before({ toolName: "exec", toolCallId: "same-call", params: { command: "private-one" } }, context);
+  await runtime.after({ toolName: "exec", toolCallId: "same-call", result: "private-result" }, context);
+  const records = (await readFile(auditPath, "utf8")).trim().split("\n").map(JSON.parse);
+  assert.equal(records.length, 2);
+  assert.equal(records[0].recordType, "proposed_effect");
+  assert.equal(records[1].recordType, "actual_effect");
+  assert.equal(records[0].eventId, records[1].eventId);
 });
 
 test("reads are omitted by default and can be included explicitly", async () => {

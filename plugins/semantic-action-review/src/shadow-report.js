@@ -1,0 +1,115 @@
+const ALLOWED_SCHEMA_V2_PATHS = new Set([
+  "schemaVersion", "recordType", "timestamp", "eventId", "mode", "enforced",
+  "tool", "tool.name", "tool.kind", "tool.inputKind", "tool.classification",
+  "tool.classification.kind", "tool.classification.consequential", "tool.classification.reason",
+  "tool.parameterShape", "tool.parameterShape.keyCount", "tool.parameterShape.fields",
+  "tool.parameterShape.fields[]", "tool.parameterShape.fields[].position",
+  "tool.parameterShape.fields[].sensitiveName", "tool.parameterShape.fields[].type",
+  "tool.parameterShape.fields[].length", "tool.parameterShape.fields[].size",
+  "tool.parameterShape.fields[].finite", "tool.parameterShape.fields[].itemTypes",
+  "tool.parameterShape.fields[].itemTypes[]", "tool.parameterShape.fields[].keyCount",
+  "tool.parameterShape.fields[].truncated",
+  "tool.parameterShape.truncated", "tool.derivedPathCount", "tool.observedName", "tool.nameChanged",
+  "actor", "actor.agentId", "actor.requesterProven", "actor.requesterOwner", "actor.channel", "actor.roleCount",
+  "correlation", "correlation.run", "correlation.toolCall", "correlation.session",
+  "policy", "policy.rulesVersion", "policy.semanticReviewCandidate", "policy.shadowRecommendation", "policy.reason",
+  "result", "result.status", "result.durationMs", "result.shape", "result.shape.type",
+  "result.shape.length", "result.shape.size", "result.shape.keyCount", "result.shape.truncated",
+  "result.shape.finite", "result.shape.itemTypes", "result.shape.itemTypes[]", "result.errorPresent",
+]);
+
+function paths(value, prefix = "") {
+  if (Array.isArray(value)) {
+    const here = `${prefix}[]`;
+    return [here, ...value.flatMap((item) => paths(item, here))];
+  }
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value).flatMap(([key, child]) => {
+    const here = prefix ? `${prefix}.${key}` : key;
+    return [here, ...paths(child, here)];
+  });
+}
+
+function percentile(values, fraction) {
+  if (!values.length) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
+}
+
+function countBy(values) {
+  return Object.entries(values.reduce((counts, value) => {
+    const key = value ?? "null";
+    counts[key] = (counts[key] ?? 0) + 1;
+    return counts;
+  }, {})).map(([value, count]) => ({ value, count })).sort((a, b) => b.count - a.count || a.value.localeCompare(b.value));
+}
+
+export function buildShadowReport(records, { schemaVersion = 2, now = Date.now(), graceMs = 60_000 } = {}) {
+  const selected = records.filter((record) => record.schemaVersion === schemaVersion);
+  const proposals = selected.filter((record) => record.recordType === "proposed_effect");
+  const actuals = selected.filter((record) => record.recordType === "actual_effect");
+  const actualIds = new Set(actuals.map((record) => record.eventId));
+  const mature = proposals.filter((record) => now - Date.parse(record.timestamp) >= graceMs);
+  const paired = mature.filter((record) => actualIds.has(record.eventId));
+  const logicalGroups = new Map();
+  for (const proposal of mature) {
+    const key = `${proposal.correlation?.run ?? "missing"}:${proposal.correlation?.toolCall ?? proposal.eventId}`;
+    const group = logicalGroups.get(key) ?? [];
+    group.push(proposal);
+    logicalGroups.set(key, group);
+  }
+  const logicalPaired = [...logicalGroups.values()].filter((group) => group.some((proposal) => actualIds.has(proposal.eventId))).length;
+  const unknown = proposals.filter((record) => record.tool?.classification?.kind === "unknown");
+  const schemaDrift = [...new Set(selected.flatMap((record) => paths(record)).filter((path) => !ALLOWED_SCHEMA_V2_PATHS.has(path)))].sort();
+  const invalidMode = selected.filter((record) => record.mode !== "shadow" || record.enforced !== false).length;
+  const durations = actuals.map((record) => record.result?.durationMs).filter(Number.isFinite);
+  const pairingRate = mature.length ? paired.length / mature.length : null;
+  const logicalPairingRate = logicalGroups.size ? logicalPaired / logicalGroups.size : null;
+  const duplicateProposals = mature.length - logicalGroups.size;
+  const unknownRate = proposals.length ? unknown.length / proposals.length : null;
+
+  return {
+    generatedAt: new Date(now).toISOString(),
+    schemaVersion,
+    sample: { records: selected.length, proposals: proposals.length, actuals: actuals.length, matureProposals: mature.length },
+    pairing: {
+      paired: paired.length, unpaired: mature.length - paired.length, rate: pairingRate,
+      logicalProposals: logicalGroups.size, logicalPaired, logicalRate: logicalPairingRate,
+      duplicateProposals, duplicateRate: mature.length ? duplicateProposals / mature.length : null,
+      graceMs,
+    },
+    coverage: {
+      unknown: unknown.length,
+      unknownRate,
+      classifications: countBy(proposals.map((record) => record.tool?.classification?.kind)),
+      tools: countBy(proposals.map((record) => record.tool?.name)),
+      aliasChanges: actuals.filter((record) => record.tool?.nameChanged === true).length,
+    },
+    execution: {
+      errors: actuals.filter((record) => record.result?.errorPresent === true).length,
+      durationMs: { p50: percentile(durations, 0.50), p95: percentile(durations, 0.95), max: durations.length ? Math.max(...durations) : null },
+      note: "Execution duration is tool runtime, not SAR hook overhead.",
+    },
+    privacy: { schemaDrift, invalidMode },
+    gates: {
+      enoughTraffic: proposals.length >= 500,
+      pairing: logicalPairingRate !== null && logicalPairingRate >= 0.99,
+      duplicateHooks: mature.length > 0 && duplicateProposals / mature.length <= 0.01,
+      classificationCoverage: unknownRate !== null && unknownRate <= 0.01,
+      schemaStable: schemaDrift.length === 0,
+      shadowOnly: invalidMode === 0,
+      semanticLabels: false,
+    },
+    verdict: "NOT_READY_FOR_ENFORCEMENT",
+    blockers: [
+      ...(proposals.length >= 500 ? [] : ["fewer-than-500-proposals"]),
+      ...(logicalPairingRate !== null && logicalPairingRate >= 0.99 ? [] : ["logical-pairing-below-99-percent"]),
+      ...(mature.length > 0 && duplicateProposals / mature.length <= 0.01 ? [] : ["duplicate-hook-observation-above-1-percent"]),
+      ...(unknownRate !== null && unknownRate <= 0.01 ? [] : ["unknown-classification-above-1-percent"]),
+      ...(schemaDrift.length === 0 ? [] : ["schema-drift-detected"]),
+      ...(invalidMode === 0 ? [] : ["non-shadow-or-enforced-record-detected"]),
+      "semantic-human-labels-not-yet-collected",
+      "sar-hook-overhead-not-yet-measured",
+    ],
+  };
+}

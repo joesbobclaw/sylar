@@ -5,10 +5,16 @@ const READ_TOOLS = new Set([
   "memory_get", "memory_search", "read_mcp_resource", "list_mcp_resources",
   "list_mcp_resource_templates", "sessions_list", "sessions_history", "sessions_search",
   "web_fetch", "web_search", "view_image", "session_status", "conversations_list",
+  "openclawmemory_search", "openclawmemory_get",
 ]);
 
 const FILE_WRITE_TOOLS = new Set(["apply_patch", "write", "edit"]);
-const EXEC_TOOLS = new Set(["exec", "exec_command", "gateway_exec", "terminal"]);
+const EXEC_TOOLS = new Set([
+  "exec", "exec_command", "gateway_exec", "openclawgateway_exec", "terminal",
+  "process", "gateway_process", "openclawgateway_process",
+]);
+const INTERNAL_STATUS_TOOLS = new Set(["progress_card"]);
+const HEARTBEAT_TOOLS = new Set(["heartbeat_respond", "openclaw_directheartbeat_respond"]);
 const DESTRUCTIVE_ACTION = /(delete|remove|destroy|drop|revoke|disable|uninstall|terminate|cancel)/i;
 const SEND_ACTION = /^(send|reply|publish|post|create_post|email|sms)$/i;
 const LOW_RISK_MESSAGE_ACTION = /^(react|typing|read|list|get|status)$/i;
@@ -22,6 +28,13 @@ export function classifyToolCall(event) {
   const toolName = event.toolName;
   const action = stringParam(event.params, ["action", "method", "operation"]);
   if (READ_TOOLS.has(toolName)) return { kind: "read", consequential: false, reason: "known-read-tool" };
+  if (INTERNAL_STATUS_TOOLS.has(toolName)) return { kind: "internal_status", consequential: false, reason: "internal-status-only" };
+  if (HEARTBEAT_TOOLS.has(toolName)) {
+    return event.params?.notify === true
+      ? { kind: "notification_send", consequential: true, reason: "outbound-heartbeat-notification" }
+      : { kind: "internal_status", consequential: false, reason: "silent-heartbeat-status" };
+  }
+  if (toolName === "skill_workshop") return { kind: "capability_mutation", consequential: true, reason: "skill-publication-or-repair" };
   if (FILE_WRITE_TOOLS.has(toolName)) return { kind: "file_write", consequential: true, reason: "filesystem-mutation" };
   if (EXEC_TOOLS.has(toolName) || event.toolKind === "code_mode_exec") return { kind: "code_execution", consequential: true, reason: "code-or-command-execution" };
   if (toolName === "message") {

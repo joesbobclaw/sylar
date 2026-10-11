@@ -41,8 +41,22 @@ Default audit path: `~/.openclaw/audit/sar-shadow.jsonl`.
 ```sh
 npm test
 npm run check
+npm run report
+npm run benchmark
 openclaw plugins inspect sylar-semantic-action-review --runtime --json
 ```
+
+To isolate a deployment window from older records:
+
+```sh
+node scripts/analyze-shadow.mjs ~/.openclaw/audit/sar-shadow.jsonl --since=2026-10-11T06:35:00Z
+```
+
+The report deliberately stays fail-closed. It checks logical pairing, duplicate
+hook delivery, unknown-tool coverage, schema drift, shadow-only invariants, and
+sample size. Tool execution duration is reported separately and must not be
+misrepresented as SAR hook overhead; the local benchmark measures the plugin's
+own paired audit path.
 
 Expected runtime surface: exactly two typed hooks (`before_tool_call` and
 `after_tool_call`), with prompt injection and conversation access denied.

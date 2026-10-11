@@ -17,9 +17,12 @@ export function createSarRuntime({ config = {}, logger = console, processSalt = 
     auditPath,
     async before(event, ctx) {
       if (!enabled) return;
+      const key = event.toolCallId ?? `${event.runId ?? ctx.runId ?? "run"}:${event.toolName}`;
+      // OpenClaw can expose both a gateway wrapper and its inner tool through
+      // the same hook with the same tool-call id. Treat that as one effect.
+      if (pending.has(key)) return undefined;
       const record = normalizeBeforeToolCall(event, ctx, { processSalt });
       if (!includeReads && !record.tool.classification.consequential) return;
-      const key = event.toolCallId ?? `${event.runId ?? ctx.runId ?? "run"}:${event.toolName}`;
       pending.set(key, { eventId: record.eventId, proposedToolName: record.tool.name, startedAt: Date.now() });
       if (pending.size > 10_000) pending.delete(pending.keys().next().value);
       await write(record);
