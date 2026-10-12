@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, stat } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, stat } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { JsonlAuditSink } from "../src/audit-sink.js";
+import { EphemeralReviewEnvelopeStore } from "../src/ephemeral-review-envelope.js";
 import { classifyToolCall, normalizeBeforeToolCall } from "../src/normalizer.js";
 import { containsRawValue } from "../src/redaction.js";
 import { createSarRuntime } from "../src/runtime.js";
@@ -123,6 +125,30 @@ test("corrected aliases do not fall into unknown review", () => {
   }
 });
 
+test("observed OpenClaw aliases receive explicit action-sensitive classifications", () => {
+  for (const toolName of [
+    "read", "openclawread", "openclawweb_fetch", "openclawsessions_history",
+    "openclawsessions_list", "openclawgithub_identity_status",
+  ]) {
+    assert.deepEqual(classifyToolCall({ toolName, params: {} }), {
+      kind: "read", consequential: false, reason: "known-read-tool",
+    });
+  }
+  assert.equal(classifyToolCall({ toolName: "openclawwrite", params: {} }).kind, "file_write");
+  assert.equal(classifyToolCall({ toolName: "sessions_send", params: {} }).kind, "message_send");
+  assert.equal(classifyToolCall({ toolName: "sessions_spawn", params: {} }).kind, "agent_spawn");
+  assert.equal(classifyToolCall({ toolName: "sessions_yield", params: {} }).consequential, false);
+  assert.equal(classifyToolCall({ toolName: "ask_user", params: {} }).kind, "message_send");
+
+  assert.deepEqual(classifyToolCall({ toolName: "automations", params: { action: "history" } }), {
+    kind: "automation_metadata", consequential: false, reason: "automation-read-action",
+  });
+  assert.deepEqual(classifyToolCall({ toolName: "automations", params: { action: "enable" } }), {
+    kind: "automation_mutation", consequential: true, reason: "automation-mutation-or-unknown-action",
+  });
+  assert.equal(classifyToolCall({ toolName: "automations", params: {} }).consequential, true);
+});
+
 test("runtime records a paired proposal/result and never returns a policy decision", async () => {
   const dir = await mkdtemp(join(tmpdir(), "sylar-sar-"));
   const auditPath = join(dir, "audit.jsonl");
@@ -187,4 +213,96 @@ test("error records disclose presence but not error text", async () => {
   assert.equal(contents.includes("private-command-2222"), false);
   assert.equal(contents.includes("private-error-3333"), false);
   assert.equal(JSON.parse(contents.trim().split("\n")[1]).result.errorPresent, true);
+});
+
+test("ephemeral envelope enforces item, concurrency, and total-byte bounds", () => {
+  const timers = [];
+  const store = new EphemeralReviewEnvelopeStore({
+    maxConcurrent: 2,
+    maxEnvelopeBytes: 96,
+    maxTotalBytes: 100,
+    ttlMs: 1_000,
+    schedule(callback) { const timer = { callback, unref() {} }; timers.push(timer); return timer; },
+    unschedule() {},
+  });
+  store.admit({ eventId: "one", action: { body: "a".repeat(40) } });
+  assert.throws(() => store.admit({ eventId: "oversized", action: { body: "b".repeat(200) } }), { code: "envelope_size_limit" });
+  assert.throws(() => store.admit({ eventId: "two", action: { body: "c".repeat(60) } }), { code: "total_size_limit" });
+  store.admit({ eventId: "two", action: { ok: true } });
+  assert.throws(() => store.admit({ eventId: "three", action: {} }), { code: "concurrent_limit" });
+  assert.equal(store.stats().count, 2);
+});
+
+test("ephemeral envelope expires, cancels, and shuts down without persistence", () => {
+  let current = 1_000;
+  const scheduled = [];
+  const store = new EphemeralReviewEnvelopeStore({
+    ttlMs: 50,
+    now: () => current,
+    schedule(callback) { const timer = { callback, unref() {} }; scheduled.push(timer); return timer; },
+    unschedule() {},
+  });
+  store.admit({ eventId: "expires", action: { secret: "expiry-secret-4812" } });
+  current = 1_051;
+  scheduled[0].callback();
+  assert.deepEqual(store.stats(), { count: 0, totalBytes: 0, reviewerBusy: false });
+  assert.throws(() => store.beginReview("expires"), { code: "envelope_unavailable" });
+
+  store.admit({ eventId: "cancel", action: { secret: "cancel-secret-9234" } });
+  assert.equal(store.cancel("cancel"), true);
+  store.admit({ eventId: "shutdown", action: { secret: "shutdown-secret-5371" } });
+  store.shutdown();
+  assert.deepEqual(store.stats(), { count: 0, totalBytes: 0, reviewerBusy: false });
+  assert.throws(() => store.admit({ eventId: "late", action: {} }), { code: "store_closed" });
+});
+
+test("semantic review returns fixed redacted metadata and deletes raw action", () => {
+  const store = new EphemeralReviewEnvelopeStore();
+  const raw = {
+    target: "recipient-private-1551",
+    body: "message-private-2662",
+    command: "command-private-3773",
+    url: "https://private.example/4884",
+    path: "/private/path/5995",
+    "attacker-private-key-6006": "identifier-private-7117",
+  };
+  store.admit({ eventId: "opaque-event", action: raw });
+  const review = store.beginReview("opaque-event");
+  assert.deepEqual(review.action, raw);
+  assert.throws(() => store.beginReview("opaque-event"), { code: "reviewer_busy" });
+  const metadata = store.finishReview("opaque-event", {
+    decision: "approval_required",
+    reviewerStatus: "ok",
+    latencyMs: 247,
+    rationale: "Contains a consequential external effect.",
+  });
+  assert.deepEqual(metadata, {
+    schemaVersion: 1,
+    recordType: "semantic_review",
+    eventId: "opaque-event",
+    label: "approval_required",
+    reviewerStatus: "ok",
+    latencyBucket: "100_499ms",
+  });
+  const serialized = JSON.stringify(metadata);
+  for (const [key, value] of Object.entries(raw)) {
+    assert.equal(serialized.includes(key), false);
+    assert.equal(serialized.includes(value), false);
+  }
+  assert.deepEqual(store.stats(), { count: 0, totalBytes: 0, reviewerBusy: false });
+});
+
+test("abrupt reviewer-process failure leaves no envelope artifact or raw value in output", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sylar-envelope-crash-"));
+  const modulePath = new URL("../src/ephemeral-review-envelope.js", import.meta.url).href;
+  const secret = "crash-private-value-8228";
+  const script = `import { EphemeralReviewEnvelopeStore } from ${JSON.stringify(modulePath)};\n` +
+    `const store = new EphemeralReviewEnvelopeStore();\n` +
+    `store.admit({ eventId: "opaque", action: { body: ${JSON.stringify(secret)} } });\n` +
+    `throw new Error("simulated reviewer crash");\n`;
+  const child = spawnSync(process.execPath, ["--input-type=module", "--eval", script], { cwd: dir, encoding: "utf8" });
+  assert.notEqual(child.status, 0);
+  assert.equal(child.stdout.includes(secret), false);
+  assert.equal(child.stderr.includes(secret), false);
+  assert.deepEqual(await readdir(dir), []);
 });

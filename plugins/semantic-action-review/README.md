@@ -79,3 +79,17 @@ The Bob deployment also has a pre-install backup and an operator-local undo
 script. These machine-specific paths are intentionally not committed here.
 
 No enforcement should be added until sustained shadow data is labeled and the false-negative, false-positive, latency, and redaction gates in the ability specification pass.
+
+## Ephemeral review envelope
+
+`src/ephemeral-review-envelope.js` implements the disconnected safety-gate
+component for future semantic labeling. It holds raw action values only in
+memory, with defaults of 100 concurrent envelopes, 256 KiB per envelope,
+8 MiB total, and a five-minute hard TTL. Admission fails closed. Envelopes are
+deleted on completion, cancellation, expiry, or shutdown; process failure loses
+them by design. Only fixed label/status/latency metadata is returned for
+possible durable logging.
+
+The envelope is deliberately **not wired into the live hooks yet**. The plugin
+remains shadow-only and behaviorally unchanged until the envelope tests and a
+separate reviewer-isolation review pass.
