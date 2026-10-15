@@ -1,5 +1,7 @@
 const ALLOWED_SCHEMA_V2_PATHS = new Set([
   "schemaVersion", "recordType", "timestamp", "eventId", "mode", "enforced",
+  "observer", "observer.samples", "observer.samples[]", "observer.samples[].phase",
+  "observer.samples[].durationMs", "observer.dropped",
   "tool", "tool.name", "tool.kind", "tool.inputKind", "tool.classification",
   "tool.classification.kind", "tool.classification.consequential", "tool.classification.reason",
   "tool.parameterShape", "tool.parameterShape.keyCount", "tool.parameterShape.fields",
@@ -75,6 +77,15 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
   const logicalPairingRate = logicalGroups.size ? logicalPaired / logicalGroups.size : null;
   const duplicateProposals = mature.length - logicalGroups.size;
   const unknownRate = proposals.length ? unknown.length / proposals.length : null;
+  const timings = proposals.flatMap((record) => record.observer?.samples ?? []);
+  const timingDropped = proposals.reduce((sum, record) => sum + (record.observer?.dropped ?? 0), 0);
+  const invalidTimings = timings.filter((sample) => !["before", "after"].includes(sample.phase) ||
+    !Number.isFinite(sample.durationMs) || sample.durationMs < 0).length;
+  const hookOverhead = Object.fromEntries(["before", "after"].map((phase) => {
+    const values = timings.filter((sample) => sample.phase === phase && Number.isFinite(sample.durationMs) && sample.durationMs >= 0).map((sample) => sample.durationMs);
+    return [phase, { count: values.length, p50: percentile(values, 0.5), p95: percentile(values, 0.95), max: values.length ? Math.max(...values) : null }];
+  }));
+  const hookOverheadMeasured = hookOverhead.before.count > 0 && hookOverhead.after.count > 0 && invalidTimings === 0;
 
   return {
     generatedAt: new Date(now).toISOString(),
@@ -103,6 +114,10 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
       note: "A mature proposal without a post-hook is outcome_unknown, never completed. Execution duration is tool runtime, not SAR hook overhead.",
     },
     privacy: { schemaDrift, invalidMode },
+    observer: {
+      hookOverheadMs: hookOverhead, dropped: timingDropped, invalid: invalidTimings,
+      note: "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Bounded samples are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency.",
+    },
     gates: {
       enoughTraffic: proposals.length >= 500,
       pairing: logicalPairingRate !== null && logicalPairingRate >= 0.99,
@@ -112,6 +127,8 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
       schemaStable: schemaDrift.length === 0,
       shadowOnly: invalidMode === 0,
       semanticLabels: false,
+      hookOverheadMeasured,
+      hookOverheadBudget: false,
     },
     verdict: "NOT_READY_FOR_ENFORCEMENT",
     blockers: [
@@ -123,7 +140,10 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
       ...(schemaDrift.length === 0 ? [] : ["schema-drift-detected"]),
       ...(invalidMode === 0 ? [] : ["non-shadow-or-enforced-record-detected"]),
       "semantic-human-labels-not-yet-collected",
-      "sar-hook-overhead-not-yet-measured",
+      ...(hookOverheadMeasured ? [] : ["sar-hook-overhead-not-yet-measured"]),
+      ...(timingDropped ? ["hook-timing-samples-dropped"] : []),
+      ...(invalidTimings ? ["invalid-hook-timing-samples"] : []),
+      "production-overhead-budget-not-yet-evaluated",
     ],
   };
 }

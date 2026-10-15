@@ -10,6 +10,62 @@ import { classifyToolCall, normalizeBeforeToolCall } from "../src/normalizer.js"
 import { containsRawValue } from "../src/redaction.js";
 import { createSarRuntime } from "../src/runtime.js";
 import { buildShadowReport } from "../src/shadow-report.js";
+import { createHookTiming } from "../src/hook-timing.js";
+
+test("known namespace aliases preserve classification without trusting arbitrary suffixes", () => {
+  for (const toolName of ["openclawweb_search", "openclaw__web_search", "openclawskills_read", "skills_search", "github_identity_status", "openclawsession_status", "ls"]) {
+    assert.equal(classifyToolCall({ toolName, params: {} }).kind, "read", toolName);
+  }
+  for (const toolName of ["message", "openclawmessage", "openclaw__message"]) {
+    assert.equal(classifyToolCall({ toolName, params: { action: "send" } }).consequential, true);
+    assert.equal(classifyToolCall({ toolName, params: { action: "read" } }).consequential, false);
+    assert.equal(classifyToolCall({ toolName, params: { action: "delete" } }).consequential, true);
+    assert.equal(classifyToolCall({ toolName, params: {} }).consequential, true);
+  }
+  for (const toolName of ["openclawsecrets", "secrets"]) {
+    assert.equal(classifyToolCall({ toolName, params: { action: "list" } }).consequential, false);
+    assert.equal(classifyToolCall({ toolName, params: { action: "request" } }).consequential, true);
+    assert.equal(classifyToolCall({ toolName, params: {} }).consequential, true);
+  }
+  assert.equal(classifyToolCall({ toolName: "openclawskill_workshop", params: { action: "read" } }).consequential, false);
+  assert.equal(classifyToolCall({ toolName: "openclawskill_workshop", params: { action: "apply" } }).kind, "capability_mutation");
+  assert.equal(classifyToolCall({ toolName: "subagents", params: { action: "cancel" } }).consequential, true);
+  assert.equal(classifyToolCall({ toolName: "clocksleep", params: {} }).consequential, false);
+  for (const toolName of ["evil__web_search", "openclaw__future_tool"]) {
+    assert.equal(classifyToolCall({ toolName, params: {} }).kind, "unknown");
+  }
+});
+
+test("hook timing includes awaited work, survives errors, and bounds its in-memory tail", async () => {
+  let current = 0;
+  const timing = createHookTiming({ now: () => current, maxSamples: 2 });
+  assert.equal(await timing.wrap("before", async () => { await Promise.resolve(); current += 7; return undefined; })(), undefined);
+  await assert.rejects(timing.wrap("after", async () => { current += 11; throw new Error("private-failure"); })(), /private-failure/);
+  await timing.wrap("before", async () => { current += 3; })();
+  assert.deepEqual(timing.drain(), { samples: [{ phase: "before", durationMs: 7 }, { phase: "after", durationMs: 11 }], dropped: 1 });
+  assert.deepEqual(timing.drain(), { samples: [], dropped: 0 });
+});
+
+test("production timing persists only previous completed hook work, never tool duration", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "sylar-timing-"));
+  const auditPath = join(dir, "audit.jsonl");
+  const runtime = createSarRuntime({ config: { auditPath }, logger: { error() {} } });
+  await runtime.before({ toolName: "exec", toolCallId: "one", params: {} }, context);
+  await runtime.after({ toolName: "exec", toolCallId: "one", durationMs: 999999, result: "private-result" }, context);
+  await runtime.before({ toolName: "exec", toolCallId: "two", params: {} }, context);
+  const records = (await readFile(auditPath, "utf8")).trim().split("\n").map(JSON.parse);
+  assert.equal(records[0].observer.samples.length, 0);
+  assert.deepEqual(records[2].observer.samples.map((sample) => sample.phase), ["before", "after"]);
+  const report = buildShadowReport(records);
+  assert.equal(report.execution.durationMs.max, 999999);
+  assert.equal(report.observer.hookOverheadMs.before.count, 1);
+  assert.equal(report.observer.hookOverheadMs.after.count, 1);
+  assert.ok(report.observer.hookOverheadMs.after.max < 999999);
+  assert.equal(report.gates.hookOverheadMeasured, true);
+  assert.equal(report.gates.hookOverheadBudget, false);
+  assert.deepEqual(report.privacy.schemaDrift, []);
+  assert.equal(report.verdict, "NOT_READY_FOR_ENFORCEMENT");
+});
 
 const context = {
   agentId: "agent:test",

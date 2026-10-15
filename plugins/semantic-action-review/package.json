@@ -10,7 +10,7 @@
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check index.js && node --check src/normalizer.js && node --check src/redaction.js && node --check src/audit-sink.js && node --check src/ephemeral-review-envelope.js && node --check src/shadow-report.js && node --check scripts/analyze-shadow.mjs && node --check scripts/benchmark-hook.mjs",
+    "check": "node --check index.js && node --check src/runtime.js && node --check src/hook-timing.js && node --check src/normalizer.js && node --check src/redaction.js && node --check src/audit-sink.js && node --check src/ephemeral-review-envelope.js && node --check src/shadow-report.js && node --check scripts/analyze-shadow.mjs && node --check scripts/benchmark-hook.mjs",
     "report": "node scripts/analyze-shadow.mjs",
     "benchmark": "node scripts/benchmark-hook.mjs"
   },

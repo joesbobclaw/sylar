@@ -8,6 +8,7 @@ const READ_TOOLS = new Set([
   "read", "openclawread", "openclawweb_fetch", "openclawsessions_list",
   "openclawsessions_history", "openclawsessions_search", "openclawgithub_identity_status",
   "openclawmemory_search", "openclawmemory_get",
+  "skills_read", "skills_search", "github_identity_status", "ls",
 ]);
 
 const FILE_WRITE_TOOLS = new Set(["apply_patch", "write", "edit", "openclawwrite"]);
@@ -25,6 +26,17 @@ const DESTRUCTIVE_ACTION = /(delete|remove|destroy|drop|revoke|disable|uninstall
 const SEND_ACTION = /^(send|reply|publish|post|create_post|email|sms)$/i;
 const LOW_RISK_MESSAGE_ACTION = /^(react|typing|read|list|get|status)$/i;
 const LOW_RISK_AUTOMATION_ACTION = /^(list|get|history|status)$/i;
+const KNOWN_NAMES = new Set([
+  ...READ_TOOLS, ...FILE_WRITE_TOOLS, ...EXEC_TOOLS, ...INTERNAL_STATUS_TOOLS,
+  ...OUTBOUND_SESSION_TOOLS, ...SPAWN_TOOLS, ...ASK_USER_TOOLS,
+  ...AUTOMATION_TOOLS, ...HEARTBEAT_TOOLS,
+  "message", "skill_workshop", "secrets", "subagents", "image_generate", "video_generate",
+]);
+// Only recognize aliases of explicit tools, never arbitrary namespace suffixes.
+const TOOL_ALIASES = new Map([...KNOWN_NAMES].flatMap((name) =>
+  [[name, name], [`openclaw${name}`, name], [`openclaw__${name}`, name]]));
+TOOL_ALIASES.set("clocksleep", "internal_wait");
+TOOL_ALIASES.set("clock__sleep", "internal_wait");
 
 function stringParam(params, names) {
   for (const name of names) if (typeof params?.[name] === "string") return params[name];
@@ -32,9 +44,16 @@ function stringParam(params, names) {
 }
 
 export function classifyToolCall(event) {
-  const toolName = event.toolName;
+  const toolName = TOOL_ALIASES.get(event.toolName) ?? event.toolName;
   const action = stringParam(event.params, ["action", "method", "operation"]);
   if (READ_TOOLS.has(toolName)) return { kind: "read", consequential: false, reason: "known-read-tool" };
+  if (toolName === "internal_wait") return { kind: "internal_status", consequential: false, reason: "internal-wait-only" };
+  if (toolName === "secrets") return action === "list"
+    ? { kind: "credential_metadata", consequential: false, reason: "credential-metadata-only" }
+    : { kind: "credential_mutation", consequential: true, reason: "credential-operation-or-unknown-action" };
+  if (toolName === "subagents") return action === "list" || action === "wait"
+    ? { kind: "internal_status", consequential: false, reason: "agent-status-only" }
+    : { kind: "agent_control", consequential: true, reason: "agent-control-or-unknown-action" };
   if (INTERNAL_STATUS_TOOLS.has(toolName)) return { kind: "internal_status", consequential: false, reason: "internal-status-only" };
   if (OUTBOUND_SESSION_TOOLS.has(toolName)) return { kind: "message_send", consequential: true, reason: "outbound-session-message" };
   if (SPAWN_TOOLS.has(toolName)) return { kind: "agent_spawn", consequential: true, reason: "agent-session-creation" };
@@ -49,7 +68,9 @@ export function classifyToolCall(event) {
       ? { kind: "notification_send", consequential: true, reason: "outbound-heartbeat-notification" }
       : { kind: "internal_status", consequential: false, reason: "silent-heartbeat-status" };
   }
-  if (toolName === "skill_workshop") return { kind: "capability_mutation", consequential: true, reason: "skill-publication-or-repair" };
+  if (toolName === "skill_workshop") return /^(list|inspect|read|history)$/.test(action)
+    ? { kind: "capability_metadata", consequential: false, reason: "skill-review-only" }
+    : { kind: "capability_mutation", consequential: true, reason: "skill-publication-or-repair" };
   if (FILE_WRITE_TOOLS.has(toolName)) return { kind: "file_write", consequential: true, reason: "filesystem-mutation" };
   if (EXEC_TOOLS.has(toolName) || event.toolKind === "code_mode_exec") return { kind: "code_execution", consequential: true, reason: "code-or-command-execution" };
   if (toolName === "message") {
@@ -61,7 +82,7 @@ export function classifyToolCall(event) {
   return { kind: "unknown", consequential: true, reason: "unknown-tools-fail-into-review" };
 }
 
-export function normalizeBeforeToolCall(event, ctx, { processSalt, rulesVersion = "shadow-2" }) {
+export function normalizeBeforeToolCall(event, ctx, { processSalt, rulesVersion = "shadow-3" }) {
   const classification = classifyToolCall(event);
   const requester = ctx.requester;
   return {

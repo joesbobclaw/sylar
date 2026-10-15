@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { JsonlAuditSink } from "./audit-sink.js";
 import { normalizeBeforeToolCall } from "./normalizer.js";
 import { resultShape } from "./redaction.js";
+import { createHookTiming } from "./hook-timing.js";
 
 export function createSarRuntime({ config = {}, logger = console, processSalt = randomBytes(32).toString("hex") } = {}) {
   const enabled = config.enabled !== false;
@@ -11,9 +12,10 @@ export function createSarRuntime({ config = {}, logger = console, processSalt = 
   const auditPath = config.auditPath ?? join(homedir(), ".openclaw", "audit", "sar-shadow.jsonl");
   const sink = new JsonlAuditSink(auditPath);
   const pending = new Map();
+  const timing = createHookTiming();
   const write = (record) => sink.append(record).catch((error) => logger.error?.(`SAR shadow audit failed: ${error.message}`));
 
-  return {
+  const runtime = {
     auditPath,
     async before(event, ctx) {
       if (!enabled) return;
@@ -23,6 +25,7 @@ export function createSarRuntime({ config = {}, logger = console, processSalt = 
       if (pending.has(key)) return undefined;
       const record = normalizeBeforeToolCall(event, ctx, { processSalt });
       if (!includeReads && !record.tool.classification.consequential) return;
+      record.observer = timing.drain();
       pending.set(key, { eventId: record.eventId, proposedToolName: record.tool.name, startedAt: Date.now() });
       if (pending.size > 10_000) pending.delete(pending.keys().next().value);
       await write(record);
@@ -55,4 +58,7 @@ export function createSarRuntime({ config = {}, logger = console, processSalt = 
       });
     },
   };
+  runtime.before = timing.wrap("before", runtime.before);
+  runtime.after = timing.wrap("after", runtime.after);
+  return runtime;
 }

@@ -93,3 +93,25 @@ possible durable logging.
 The envelope is deliberately **not wired into the live hooks yet**. The plugin
 remains shadow-only and behaviorally unchanged until the envelope tests and a
 separate reviewer-isolation review pass.
+
+## Completed-hook timing (shadow-3)
+
+Known OpenClaw aliases are matched against an explicit allowlist. Unknown names
+and unknown mutating actions remain review candidates; credential operations
+and agent control are action-sensitive.
+
+Every hook body is timed with a monotonic clock, including awaited audit IO.
+At most 128 completed samples are held in memory and attached to the next
+recorded proposal under `observer`. Overflow is counted, not silently hidden.
+The final process tail is intentionally lost. This avoids a recursive second
+write just to record the cost of the first one. Measurements exclude Gateway
+scheduling and tool execution; they are per-hook, not paired-call percentiles
+or semantic-model latency. The report keeps observation separate from an
+approved latency budget and never promotes automatically.
+
+A frozen redacted historical cohort cannot be retroactively semantically
+labeled: the required recipient/content/authorization evidence was never
+stored. Future representative labels must be collected prospectively through
+the ephemeral envelope with an isolated reviewer and human ground truth.
+Neither relabeling old classifications nor synthetic fixture accuracy closes
+that gate.
