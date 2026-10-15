@@ -34,9 +34,7 @@ max 16.888 ms. These local measurements are not production evidence.
 
 Hot reload failed during drain: 11 retained work items did not settle within
 60 seconds. Gateway explicitly reported generation 2 replacement not applied;
-the old runtime remains active. A backed-up Gateway restart is the fallback.
-Post-restart verification is pending; do not claim the fixes are live until a
-fresh `shadow-3` canary and paired records are observed.
+the old runtime remained active until the backed-up Gateway restart below.
 
 ## Semantic gate
 
@@ -45,3 +43,38 @@ recipient/content/authorization evidence was intentionally never stored.
 Prospective isolated ephemeral reviews and independent human ground truth are
 still required. Synthetic accuracy and corrected historical classifications
 are not substitutes. SAR remains shadow-only; the envelope remains disconnected.
+
+## Restart recovery and live verification
+
+Gateway PID 81642 started at 23:14:46Z; plugin activation was logged at
+`2026-10-15T23:15:32.274Z`. First fresh `shadow-3` proposal was recorded at
+23:16:55.667Z. No active/recent child runs required recovery. No restart was
+replayed during recovery.
+
+Runtime inspection with `--runtime` reports exactly `before_tool_call` and
+`after_tool_call`, no diagnostic errors, no tools or additional authority,
+and denied prompt-injection/conversation access. Inspection without
+`--runtime` is discovery-only and reports zero hooks; it is not live-hook proof.
+
+Snapshot generated at `2026-10-15T23:19:28.892Z`, using the activation boundary:
+
+- 39 proposals; 26 mature logical proposals; 26/26 paired/completed.
+- Zero mature unknown outcomes, unknown classifications, duplicate proposals,
+  schema drift, or non-shadow/enforced records.
+- 84 before-hook timing samples: p50 0.179 ms, p95 3.052 ms, max 17.236 ms.
+- 84 after-hook timing samples: p50 0.525 ms, p95 25.184 ms, max 34.939 ms.
+- Zero dropped or invalid timing samples. These are per-hook wall times, not
+  paired-call percentiles or semantic-model latency; final-tail loss still applies.
+- A fresh Gateway command/output canary paired successfully and was absent
+  from the audit JSONL. Audit directory/file permissions remain 0700/0600.
+
+An initial recovery query beginning at 23:14Z straddled plugin activation and
+included one older unknown outcome. It is not the post-activation cohort;
+older unknowns remain in the full audit and were not relabeled as successes.
+Two exploratory shell lookups failed because `rg` was absent from the Gateway
+shell PATH; filesystem/Python inspection completed the checks instead.
+
+Verdict: deployment verified, **NOT_READY_FOR_ENFORCEMENT**. Remaining gates:
+at least 500 fresh proposals, prospective independent semantic human labels,
+and an evaluated production overhead budget. Do not manufacture traffic or
+infer semantic accuracy from redacted telemetry. Envelope remains disconnected.

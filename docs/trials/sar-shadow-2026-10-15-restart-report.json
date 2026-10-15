@@ -1,0 +1,121 @@
+{
+  "generatedAt": "2026-10-15T23:19:28.892Z",
+  "schemaVersion": 2,
+  "sample": {
+    "records": 77,
+    "proposals": 39,
+    "actuals": 38,
+    "matureProposals": 26
+  },
+  "pairing": {
+    "paired": 26,
+    "unpaired": 0,
+    "rate": 1,
+    "logicalProposals": 26,
+    "logicalPaired": 26,
+    "logicalRate": 1,
+    "duplicateProposals": 0,
+    "duplicateRate": 0,
+    "graceMs": 60000
+  },
+  "coverage": {
+    "unknown": 0,
+    "unknownRate": 0,
+    "classifications": [
+      {
+        "value": "code_execution",
+        "count": 37
+      },
+      {
+        "value": "file_write",
+        "count": 1
+      },
+      {
+        "value": "message_send",
+        "count": 1
+      }
+    ],
+    "tools": [
+      {
+        "value": "exec",
+        "count": 29
+      },
+      {
+        "value": "openclawgateway_process",
+        "count": 5
+      },
+      {
+        "value": "openclawgateway_exec",
+        "count": 3
+      },
+      {
+        "value": "apply_patch",
+        "count": 1
+      },
+      {
+        "value": "message",
+        "count": 1
+      }
+    ],
+    "aliasChanges": 8
+  },
+  "execution": {
+    "errors": 0,
+    "logicalOutcomes": [
+      {
+        "value": "completed",
+        "count": 26
+      }
+    ],
+    "outcomeUnknown": 0,
+    "outcomeUnknownRate": 0,
+    "outcomeAccountingRate": 1,
+    "durationMs": {
+      "p50": 565,
+      "p95": 7394,
+      "max": 10972
+    },
+    "note": "A mature proposal without a post-hook is outcome_unknown, never completed. Execution duration is tool runtime, not SAR hook overhead."
+  },
+  "privacy": {
+    "schemaDrift": [],
+    "invalidMode": 0
+  },
+  "observer": {
+    "hookOverheadMs": {
+      "before": {
+        "count": 84,
+        "p50": 0.17859900000621565,
+        "p95": 3.051865000015823,
+        "max": 17.235983999999007
+      },
+      "after": {
+        "count": 84,
+        "p50": 0.524505000008503,
+        "p95": 25.183806999993976,
+        "max": 34.93923599997652
+      }
+    },
+    "dropped": 0,
+    "invalid": 0,
+    "note": "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Bounded samples are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency."
+  },
+  "gates": {
+    "enoughTraffic": false,
+    "pairing": true,
+    "outcomeAccounting": true,
+    "duplicateHooks": true,
+    "classificationCoverage": true,
+    "schemaStable": true,
+    "shadowOnly": true,
+    "semanticLabels": false,
+    "hookOverheadMeasured": true,
+    "hookOverheadBudget": false
+  },
+  "verdict": "NOT_READY_FOR_ENFORCEMENT",
+  "blockers": [
+    "fewer-than-500-proposals",
+    "semantic-human-labels-not-yet-collected",
+    "production-overhead-budget-not-yet-evaluated"
+  ]
+}
