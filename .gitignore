@@ -8,3 +8,6 @@ coverage/
 *.log
 tmp/
 .tmp/
+
+# Host-local rollback paths; never publish.
+patches/LOCAL_DEPLOYMENT.json

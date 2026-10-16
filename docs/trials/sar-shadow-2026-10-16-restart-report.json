@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-10-16T23:59:13.798Z",
+  "schemaVersion": 2,
+  "sample": {
+    "records": 57,
+    "proposals": 29,
+    "actuals": 28,
+    "matureProposals": 17
+  },
+  "pairing": {
+    "paired": 17,
+    "unpaired": 0,
+    "rate": 1,
+    "logicalProposals": 17,
+    "logicalPaired": 17,
+    "logicalRate": 1,
+    "duplicateProposals": 0,
+    "duplicateRate": 0,
+    "graceMs": 60000
+  },
+  "coverage": {
+    "unknown": 0,
+    "unknownRate": 0,
+    "classifications": [
+      {
+        "value": "code_execution",
+        "count": 27
+      },
+      {
+        "value": "message_send",
+        "count": 2
+      }
+    ],
+    "tools": [
+      {
+        "value": "exec",
+        "count": 23
+      },
+      {
+        "value": "openclawgateway_process",
+        "count": 3
+      },
+      {
+        "value": "message",
+        "count": 2
+      },
+      {
+        "value": "openclawgateway_exec",
+        "count": 1
+      }
+    ],
+    "aliasChanges": 4
+  },
+  "execution": {
+    "errors": 0,
+    "logicalOutcomes": [
+      {
+        "value": "completed",
+        "count": 17
+      }
+    ],
+    "outcomeUnknown": 0,
+    "outcomeUnknownRate": 0,
+    "outcomeAccountingRate": 1,
+    "durationMs": {
+      "p50": 571,
+      "p95": 16031,
+      "max": 16211
+    },
+    "note": "A mature proposal without a post-hook is outcome_unknown, never completed. Execution duration is tool runtime, not SAR hook overhead."
+  },
+  "privacy": {
+    "schemaDrift": [],
+    "invalidMode": 0
+  },
+  "observer": {
+    "hookOverheadMs": {
+      "before": {
+        "count": 57,
+        "p50": 0.17649000001256354,
+        "p95": 1.5915589999931399,
+        "max": 19.64012399999774
+      },
+      "after": {
+        "count": 57,
+        "p50": 0.538062000006903,
+        "p95": 24.895121000008658,
+        "max": 32.83642000000691
+      }
+    },
+    "dropped": 0,
+    "invalid": 0,
+    "note": "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Bounded samples are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency."
+  },
+  "gates": {
+    "enoughTraffic": false,
+    "pairing": true,
+    "outcomeAccounting": true,
+    "duplicateHooks": true,
+    "classificationCoverage": true,
+    "schemaStable": true,
+    "shadowOnly": true,
+    "semanticLabels": false,
+    "hookOverheadMeasured": true,
+    "hookOverheadBudget": false
+  },
+  "verdict": "NOT_READY_FOR_ENFORCEMENT",
+  "blockers": [
+    "fewer-than-500-proposals",
+    "semantic-human-labels-not-yet-collected",
+    "production-overhead-budget-not-yet-evaluated"
+  ]
+}
