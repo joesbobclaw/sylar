@@ -1,0 +1,136 @@
+{
+  "generatedAt": "2026-10-18T17:41:53.002Z",
+  "schemaVersion": 2,
+  "sample": {
+    "records": 85,
+    "proposals": 43,
+    "actuals": 42,
+    "matureProposals": 28
+  },
+  "pairing": {
+    "paired": 28,
+    "unpaired": 0,
+    "rate": 1,
+    "logicalProposals": 28,
+    "logicalPaired": 28,
+    "logicalRate": 1,
+    "duplicateProposals": 0,
+    "duplicateRate": 0,
+    "graceMs": 60000
+  },
+  "coverage": {
+    "unknown": 0,
+    "unknownRate": 0,
+    "classifications": [
+      {
+        "value": "code_execution",
+        "count": 42
+      },
+      {
+        "value": "message_send",
+        "count": 1
+      }
+    ],
+    "tools": [
+      {
+        "value": "exec",
+        "count": 37
+      },
+      {
+        "value": "openclawgateway_process",
+        "count": 3
+      },
+      {
+        "value": "openclawgateway_exec",
+        "count": 2
+      },
+      {
+        "value": "message",
+        "count": 1
+      }
+    ],
+    "aliasChanges": 5
+  },
+  "execution": {
+    "errors": 0,
+    "logicalOutcomes": [
+      {
+        "value": "completed",
+        "count": 28
+      }
+    ],
+    "outcomeUnknown": 0,
+    "outcomeUnknownRate": 0,
+    "outcomeAccountingRate": 1,
+    "durationMs": {
+      "p50": 589,
+      "p95": 10375,
+      "max": 37458
+    },
+    "note": "A mature proposal without a post-hook is outcome_unknown, never completed. Execution duration is tool runtime, not SAR hook overhead."
+  },
+  "privacy": {
+    "schemaDrift": [],
+    "invalidMode": 0
+  },
+  "observer": {
+    "hookOverheadMs": {
+      "before": {
+        "count": 70,
+        "p50": 1,
+        "p95": 3,
+        "max": 23.787917999987258
+      },
+      "after": {
+        "count": 70,
+        "p50": 1,
+        "p95": 12,
+        "max": 28.013981000025524
+      }
+    },
+    "dropped": 0,
+    "invalid": 0,
+    "percentileMethod": "histogram-upper-bound",
+    "note": "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Fixed-size timing histograms (or legacy samples) are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency."
+  },
+  "gates": {
+    "enoughTraffic": false,
+    "pairing": true,
+    "outcomeAccounting": true,
+    "duplicateHooks": true,
+    "classificationCoverage": true,
+    "schemaStable": true,
+    "shadowOnly": true,
+    "semanticLabels": false,
+    "hookOverheadMeasured": true,
+    "hookOverheadBudget": false
+  },
+  "verdict": "NOT_READY_FOR_ENFORCEMENT",
+  "blockers": [
+    "fewer-than-500-proposals",
+    "semantic-human-labels-not-yet-collected",
+    "production-overhead-budget-not-yet-evaluated"
+  ],
+  "window": {
+    "since": "2026-10-18T17:38:16.680Z",
+    "basis": "latest startup SAR activation log; all selected proposals confirmed shadow-4 / timingVersion 2",
+    "scope": "small smoke including diagnostic traffic; not sustained validation"
+  },
+  "deploymentVerification": {
+    "gatewayHealthy": true,
+    "processReplaced": true,
+    "typedHooks": [
+      "before_tool_call",
+      "after_tool_call"
+    ],
+    "capabilityCount": 0,
+    "diagnostics": 0,
+    "canaryPaired": true,
+    "canaryResultUnchanged": true,
+    "canaryMarkerAbsent": true,
+    "auditDirectoryMode": "0700",
+    "auditFileMode": "0600",
+    "schedulerPatchHashVerified": true,
+    "schedulerCanaryRepeated": false
+  }
+}

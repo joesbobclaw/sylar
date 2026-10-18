@@ -2,7 +2,7 @@
 
 ## Status
 
-Prepared and locally verified; live activation still pending. Enforcement off.
+Live shadow-4 activation verified after the deferred safe restart. Enforcement off.
 Human-label pilot protocol and scorer prepared, not started; private collection
 surface/reviewer adapter remain unwired. No raw live actions are being collected.
 
@@ -52,8 +52,33 @@ assessment; no retrospective preregistration or promotion claim.
 
 ## Live verification
 
-Pending authorized lifecycle activation. Backup/undo and recovery details are in
-the ignored host-local `patches/TIMING_LOCAL_DEPLOYMENT.json`. Preserve audit data.
-After activation: verify health/process or runtime generation, exactly two hooks and
-no new authority; fresh shadow-4 timingVersion2 canary paired/redacted,0700/0600,
-zero recorded drops/invalids. Preserve prior smoke and historical unknown outcomes.
+Deferred restart completed without another restart request or force. Health RPC
+passed and the Gateway process changed. Startup logged SAR activation at
+2026-10-18T17:37:37.490Z and again at 17:38:16.680Z; the later exact timestamp
+is the conservative analysis boundary. Every selected proposal is shadow-4 with
+observer.timingVersion 2. Runtime inspection confirms exactly before_tool_call
+and after_tool_call, zero capabilities/tools/services/diagnostics, prompt injection
+and conversation access denied.
+
+A harmless read-only command through live gateway_exec returned its expected
+marker unchanged. Its single proposal and completed actual share an event ID;
+the proposed/observed alias difference is retained. Marker absent from the full
+JSONL; directory/file modes 0700/0600. Raw marker, event ID and process details
+are retained only in the ignored host-local manifest. No configuration changed.
+The scheduler bridge still matches its pinned patched hash; its prior once-only
+live canary evidence is preserved, not repeated for an unchanged bridge.
+
+Snapshot 2026-10-18T17:41:53.002Z: 43 proposals, 42 actuals, 28/28 mature logical
+outcomes completed/paired; zero unknown outcomes/classifications, duplicates,
+schema drift or enforced records. Immature proposals remain outside mature
+accounting, not inferred successful. Timing has 70 samples per phase, zero drops
+or invalids; conservative histogram p95 upper bounds before 3ms /after 12ms.
+See [aggregate report](sar-shadow-2026-10-18-post-histogram-report.json).
+
+Small smoke only, including diagnostic and unrelated concurrent traffic; fewer
+than 500 fresh proposals. Historical missing outcomes, 304 timing drops in the
+pre-histogram report, and unresolved earlier cases remain unchanged. Histogram
+process tails remain unpersisted. No sustained or overhead-budget conclusion.
+Semantic-label and overhead-budget gates remain false. Human-label pilot protocol
+and metadata scorer are PREPARED only: private collection surface/model adapter
+not built or live; no human labels; semantic envelope disconnected.
