@@ -1,7 +1,10 @@
 # Prospective human-label pilot v1
 
-Status: PREPARED, NOT STARTED. No human labels collected. No live envelope wiring,
-new model grants, execution, posting, or reviewer authority is enabled by this plan.
+Status: COLLECTION NOT STARTED. A standalone private surface and isolated reviewer
+are built and locally HTTP-tested; rendered browser verification is blocked by
+platform browser policy. Real-action admission remains disabled. No human labels,
+live-hook wiring, new model grants, execution or enforcement. See
+[surface verification](sar-review-pilot-2026-10-18.md).
 
 ## First cohort
 
@@ -21,9 +24,9 @@ accuracy or promotion. A larger independently specified study follows pilot revi
    <=100 items, <=8 MiB total, <=5 minutes. Only one tool-less reviewer at a time.
    A human must see the same decision-relevant envelope through a private, authenticated
    local surface with no request-body logging, disk cache, telemetry or raw export.
-   That surface and the separate reviewer adapter are NOT implemented/wired in this
-   pilot preparation. Until they pass isolation/redaction/deletion checks, do not admit
-   live action values. Never show raw action values in this Discord channel.
+   The standalone surface/reviewer are implemented with isolation, redaction and
+   deletion tests; delivered browser interaction remains unverified. Until that
+   check passes, real-action admission stays off. Never show raw action values in this Discord channel.
 3. Human labels independently before seeing the reviewer's decision/rationale. Seal
    both decisions in memory, then compare. The acting model cannot supply human truth.
    If the human misses the TTL, expire the item and count attrition; never extend it.

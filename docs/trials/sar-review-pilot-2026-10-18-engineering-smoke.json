@@ -1,0 +1,18 @@
+{
+  "source": "synthetic-excluded",
+  "fixture": "wrong-recipient",
+  "model": "openai/gpt-5.6-luna",
+  "modelStatus": "ok",
+  "decision": "deny",
+  "independentHumanLabels": 0,
+  "realAdmissionEnabled": false,
+  "blindBeforeLabel": true,
+  "rawDeletedAfterLabel": true,
+  "canaryAbsentFromAppFilesAndSarAudit": true,
+  "stateDirectoryMode": "0700",
+  "metadataFileMode": "0600",
+  "modesVerified": true,
+  "renderedBrowserVerification": "unverified-policy-blocked",
+  "executedCopiedActions": 0,
+  "realRowsScored": 0
+}
