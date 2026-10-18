@@ -1,7 +1,11 @@
+import { TIMING_BOUNDS_MS, timingBin, emptyTimingHistogram } from "./hook-timing.js";
+
 const ALLOWED_SCHEMA_V2_PATHS = new Set([
   "schemaVersion", "recordType", "timestamp", "eventId", "mode", "enforced",
   "observer", "observer.samples", "observer.samples[]", "observer.samples[].phase",
   "observer.samples[].durationMs", "observer.dropped",
+  "observer.timingVersion", "observer.invalid", "observer.histograms", "observer.histograms[]",
+  "observer.histograms[].phase", "observer.histograms[].counts", "observer.histograms[].counts[]", "observer.histograms[].maxMs",
   "tool", "tool.name", "tool.kind", "tool.inputKind", "tool.classification",
   "tool.classification.kind", "tool.classification.consequential", "tool.classification.reason",
   "tool.parameterShape", "tool.parameterShape.keyCount", "tool.parameterShape.fields",
@@ -77,15 +81,8 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
   const logicalPairingRate = logicalGroups.size ? logicalPaired / logicalGroups.size : null;
   const duplicateProposals = mature.length - logicalGroups.size;
   const unknownRate = proposals.length ? unknown.length / proposals.length : null;
-  const timings = proposals.flatMap((record) => record.observer?.samples ?? []);
-  const timingDropped = proposals.reduce((sum, record) => sum + (record.observer?.dropped ?? 0), 0);
-  const invalidTimings = timings.filter((sample) => !["before", "after"].includes(sample.phase) ||
-    !Number.isFinite(sample.durationMs) || sample.durationMs < 0).length;
-  const hookOverhead = Object.fromEntries(["before", "after"].map((phase) => {
-    const values = timings.filter((sample) => sample.phase === phase && Number.isFinite(sample.durationMs) && sample.durationMs >= 0).map((sample) => sample.durationMs);
-    return [phase, { count: values.length, p50: percentile(values, 0.5), p95: percentile(values, 0.95), max: values.length ? Math.max(...values) : null }];
-  }));
-  const hookOverheadMeasured = hookOverhead.before.count > 0 && hookOverhead.after.count > 0 && invalidTimings === 0;
+  const timingReport = summarizeTiming(proposals);
+  const { hookOverhead, timingDropped, invalidTimings, hookOverheadMeasured } = timingReport;
 
   return {
     generatedAt: new Date(now).toISOString(),
@@ -116,7 +113,8 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
     privacy: { schemaDrift, invalidMode },
     observer: {
       hookOverheadMs: hookOverhead, dropped: timingDropped, invalid: invalidTimings,
-      note: "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Bounded samples are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency.",
+      percentileMethod: timingReport.percentileMethod,
+      note: "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Fixed-size timing histograms (or legacy samples) are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency.",
     },
     gates: {
       enoughTraffic: proposals.length >= 500,
@@ -146,4 +144,76 @@ export function buildShadowReport(records, { schemaVersion = 2, now = Date.now()
       "production-overhead-budget-not-yet-evaluated",
     ],
   };
+}
+
+
+function summarizeTiming(proposals) {
+  const merged = [emptyTimingHistogram("before"), emptyTimingHistogram("after")];
+  const legacy = { before: [], after: [] };
+  let invalidTimings = 0;
+  let timingDropped = 0;
+  let hasHistogram = false;
+  for (const { observer } of proposals) {
+    if (!observer) continue;
+    const dropped = observer.dropped ?? 0;
+    if (!Number.isSafeInteger(dropped) || dropped < 0) invalidTimings++;
+    else timingDropped += dropped;
+    if (observer.timingVersion !== undefined) {
+      hasHistogram = true;
+      if (observer.timingVersion !== 2 || !Array.isArray(observer.histograms) || observer.histograms.length !== 2 ||
+          !Number.isSafeInteger(observer.invalid) || observer.invalid < 0 || observer.samples !== undefined) {
+        invalidTimings++;
+        continue;
+      }
+      invalidTimings += observer.invalid;
+      for (let phaseIndex = 0; phaseIndex < 2; phaseIndex++) {
+        const source = observer.histograms[phaseIndex];
+        const target = merged[phaseIndex];
+        if (!source || source.phase !== target.phase || !Array.isArray(source.counts) ||
+            source.counts.length !== target.counts.length ||
+            !source.counts.every((count) => Number.isSafeInteger(count) && count >= 0)) {
+          invalidTimings++;
+          continue;
+        }
+        const count = source.counts.reduce((sum, value) => sum + value, 0);
+        if (!Number.isSafeInteger(count) || (count === 0 ? source.maxMs !== null :
+            !Number.isFinite(source.maxMs) || source.maxMs < 0 ||
+            source.counts[timingBin(source.maxMs)] === 0 ||
+            source.counts.slice(timingBin(source.maxMs) + 1).some((value) => value > 0))) {
+          invalidTimings++;
+          continue;
+        }
+        source.counts.forEach((value, index) => { target.counts[index] += value; });
+        if (count) target.maxMs = Math.max(target.maxMs ?? 0, source.maxMs);
+      }
+    } else {
+      if (observer.histograms !== undefined) { invalidTimings++; continue; }
+      for (const sample of observer.samples ?? []) {
+        if (!["before", "after"].includes(sample.phase) || !Number.isFinite(sample.durationMs) || sample.durationMs < 0) {
+          invalidTimings++;
+          continue;
+        }
+        legacy[sample.phase].push(sample.durationMs);
+        const target = merged[sample.phase === "before" ? 0 : 1];
+        target.counts[timingBin(sample.durationMs)]++;
+        target.maxMs = Math.max(target.maxMs ?? 0, sample.durationMs);
+      }
+    }
+  }
+  const hookOverhead = Object.fromEntries(merged.map(({ phase, counts, maxMs }) => {
+    const count = counts.reduce((sum, value) => sum + value, 0);
+    const upperBound = (fraction) => {
+      if (!count) return null;
+      const rank = Math.min(count - 1, Math.floor(count * fraction));
+      let cumulative = 0;
+      const index = counts.findIndex((value) => { cumulative += value; return cumulative > rank; });
+      return Math.min(TIMING_BOUNDS_MS[index] ?? maxMs, maxMs);
+    };
+    return [phase, { count,
+      p50: hasHistogram ? upperBound(0.5) : percentile(legacy[phase], 0.5),
+      p95: hasHistogram ? upperBound(0.95) : percentile(legacy[phase], 0.95), max: maxMs }];
+  }));
+  return { hookOverhead, timingDropped, invalidTimings,
+    percentileMethod: hasHistogram ? "histogram-upper-bound" : "exact-legacy-samples",
+    hookOverheadMeasured: hookOverhead.before.count > 0 && hookOverhead.after.count > 0 && invalidTimings === 0 };
 }

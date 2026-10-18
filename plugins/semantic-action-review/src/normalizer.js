@@ -82,7 +82,7 @@ export function classifyToolCall(event) {
   return { kind: "unknown", consequential: true, reason: "unknown-tools-fail-into-review" };
 }
 
-export function normalizeBeforeToolCall(event, ctx, { processSalt, rulesVersion = "shadow-3" }) {
+export function normalizeBeforeToolCall(event, ctx, { processSalt, rulesVersion = "shadow-4" }) {
   const classification = classifyToolCall(event);
   const requester = ctx.requester;
   return {

@@ -1,0 +1,174 @@
+{
+  "generatedAt": "2026-10-18T17:29:04.043Z",
+  "schemaVersion": 2,
+  "sample": {
+    "records": 2312,
+    "proposals": 1158,
+    "actuals": 1154,
+    "matureProposals": 1151
+  },
+  "pairing": {
+    "paired": 1148,
+    "unpaired": 3,
+    "rate": 0.9973935708079931,
+    "logicalProposals": 1151,
+    "logicalPaired": 1148,
+    "logicalRate": 0.9973935708079931,
+    "duplicateProposals": 0,
+    "duplicateRate": 0,
+    "graceMs": 60000
+  },
+  "coverage": {
+    "unknown": 2,
+    "unknownRate": 0.0017271157167530224,
+    "classifications": [
+      {
+        "value": "code_execution",
+        "count": 971
+      },
+      {
+        "value": "file_write",
+        "count": 128
+      },
+      {
+        "value": "message_send",
+        "count": 35
+      },
+      {
+        "value": "automation_mutation",
+        "count": 16
+      },
+      {
+        "value": "agent_spawn",
+        "count": 6
+      },
+      {
+        "value": "unknown",
+        "count": 2
+      }
+    ],
+    "tools": [
+      {
+        "value": "exec",
+        "count": 921
+      },
+      {
+        "value": "write",
+        "count": 89
+      },
+      {
+        "value": "process",
+        "count": 43
+      },
+      {
+        "value": "message",
+        "count": 35
+      },
+      {
+        "value": "apply_patch",
+        "count": 23
+      },
+      {
+        "value": "edit",
+        "count": 16
+      },
+      {
+        "value": "automations",
+        "count": 10
+      },
+      {
+        "value": "openclawautomations",
+        "count": 6
+      },
+      {
+        "value": "sessions_spawn",
+        "count": 6
+      },
+      {
+        "value": "openclawgateway_process",
+        "count": 4
+      },
+      {
+        "value": "openclawgateway_exec",
+        "count": 3
+      },
+      {
+        "value": "openclaw_directsessions_yield",
+        "count": 1
+      },
+      {
+        "value": "openclawplugins",
+        "count": 1
+      }
+    ],
+    "aliasChanges": 15
+  },
+  "execution": {
+    "errors": 12,
+    "logicalOutcomes": [
+      {
+        "value": "completed",
+        "count": 1136
+      },
+      {
+        "value": "error",
+        "count": 12
+      },
+      {
+        "value": "outcome_unknown",
+        "count": 3
+      }
+    ],
+    "outcomeUnknown": 3,
+    "outcomeUnknownRate": 0.0026064291920069507,
+    "outcomeAccountingRate": 0.9973935708079931,
+    "durationMs": {
+      "p50": 583,
+      "p95": 8586,
+      "max": 425725
+    },
+    "note": "A mature proposal without a post-hook is outcome_unknown, never completed. Execution duration is tool runtime, not SAR hook overhead."
+  },
+  "privacy": {
+    "schemaDrift": [],
+    "invalidMode": 0
+  },
+  "observer": {
+    "hookOverheadMs": {
+      "before": {
+        "count": 2428,
+        "p50": 0.11113699898123741,
+        "p95": 8.564739018678665,
+        "max": 74.77703499794006
+      },
+      "after": {
+        "count": 2416,
+        "p50": 0.5533959995955229,
+        "p95": 26.318375006318092,
+        "max": 975.2473409920931
+      }
+    },
+    "dropped": 304,
+    "invalid": 0,
+    "percentileMethod": "exact-legacy-samples",
+    "note": "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Fixed-size timing histograms (or legacy samples) are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency."
+  },
+  "gates": {
+    "enoughTraffic": true,
+    "pairing": true,
+    "outcomeAccounting": true,
+    "duplicateHooks": true,
+    "classificationCoverage": true,
+    "schemaStable": true,
+    "shadowOnly": true,
+    "semanticLabels": false,
+    "hookOverheadMeasured": true,
+    "hookOverheadBudget": false
+  },
+  "verdict": "NOT_READY_FOR_ENFORCEMENT",
+  "blockers": [
+    "semantic-human-labels-not-yet-collected",
+    "hook-timing-samples-dropped",
+    "production-overhead-budget-not-yet-evaluated"
+  ]
+}

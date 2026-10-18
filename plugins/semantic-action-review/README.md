@@ -94,15 +94,18 @@ The envelope is deliberately **not wired into the live hooks yet**. The plugin
 remains shadow-only and behaviorally unchanged until the envelope tests and a
 separate reviewer-isolation review pass.
 
-## Completed-hook timing (shadow-3)
+## Completed-hook timing (shadow-4)
 
 Known OpenClaw aliases are matched against an explicit allowlist. Unknown names
 and unknown mutating actions remain review candidates; credential operations
 and agent control are action-sensitive.
 
 Every hook body is timed with a monotonic clock, including awaited audit IO.
-At most 128 completed samples are held in memory and attached to the next
-recorded proposal under `observer`. Overflow is counted, not silently hidden.
+Two fixed-size histograms (33 counters per phase plus exact maxima) retain every
+completed measurement until the next recorded proposal under `observer`. Read-only
+bursts cannot exhaust a sample list. Percentiles are conservative histogram upper
+bounds, not exact quantiles. Legacy sample reports stay readable and historical
+drops remain recorded; never mix old drops into a claimed clean post-fix window.
 The final process tail is intentionally lost. This avoids a recursive second
 write just to record the cost of the first one. Measurements exclude Gateway
 scheduling and tool execution; they are per-hook, not paired-call percentiles
@@ -115,3 +118,12 @@ stored. Future representative labels must be collected prospectively through
 the ephemeral envelope with an isolated reviewer and human ground truth.
 Neither relabeling old classifications nor synthetic fixture accuracy closes
 that gate.
+
+## Human-label pilot preparation
+
+See [prospective pilot v1](../../docs/trials/sar-human-label-pilot-v1.md).
+`npm run labels --silent < PRIVATE_METADATA.jsonl` scores only fixed metadata,
+excludes synthetic/nonindependent rows, and discloses failures and disagreement.
+It does not collect raw effects or human labels, prove source independence, or
+close any promotion gate. The authenticated private collection surface and separate
+reviewer adapter are still unwired. No new live capabilities are registered.

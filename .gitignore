@@ -11,3 +11,4 @@ tmp/
 
 # Host-local rollback paths; never publish.
 patches/LOCAL_DEPLOYMENT.json
+patches/TIMING_LOCAL_DEPLOYMENT.json

@@ -5,14 +5,21 @@
   "type": "module",
   "description": "Shadow-only semantic action review telemetry for OpenClaw",
   "openclaw": {
-    "extensions": ["./index.js"],
-    "compat": { "pluginApi": ">=2026.9.1" }
+    "extensions": [
+      "./index.js"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.9.1"
+    }
   },
   "scripts": {
     "test": "node --test",
-    "check": "node --check index.js && node --check src/runtime.js && node --check src/hook-timing.js && node --check src/normalizer.js && node --check src/redaction.js && node --check src/audit-sink.js && node --check src/ephemeral-review-envelope.js && node --check src/shadow-report.js && node --check scripts/analyze-shadow.mjs && node --check scripts/benchmark-hook.mjs",
+    "check": "node --check index.js && node --check src/runtime.js && node --check src/hook-timing.js && node --check src/normalizer.js && node --check src/redaction.js && node --check src/audit-sink.js && node --check src/ephemeral-review-envelope.js && node --check src/shadow-report.js && node --check scripts/analyze-shadow.mjs && node --check scripts/benchmark-hook.mjs && node --check src/label-report.js && node --check scripts/analyze-labels.mjs",
     "report": "node scripts/analyze-shadow.mjs",
-    "benchmark": "node scripts/benchmark-hook.mjs"
+    "benchmark": "node scripts/benchmark-hook.mjs",
+    "labels": "node scripts/analyze-labels.mjs"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

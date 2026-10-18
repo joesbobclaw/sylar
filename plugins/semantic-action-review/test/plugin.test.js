@@ -10,7 +10,7 @@ import { classifyToolCall, normalizeBeforeToolCall } from "../src/normalizer.js"
 import { containsRawValue } from "../src/redaction.js";
 import { createSarRuntime } from "../src/runtime.js";
 import { buildShadowReport } from "../src/shadow-report.js";
-import { createHookTiming } from "../src/hook-timing.js";
+import { createHookTiming, emptyTimingHistogram } from "../src/hook-timing.js";
 
 test("known namespace aliases preserve classification without trusting arbitrary suffixes", () => {
   for (const toolName of ["openclawweb_search", "openclaw__web_search", "openclawskills_read", "skills_search", "github_identity_status", "openclawsession_status", "ls"]) {
@@ -38,12 +38,17 @@ test("known namespace aliases preserve classification without trusting arbitrary
 
 test("hook timing includes awaited work, survives errors, and bounds its in-memory tail", async () => {
   let current = 0;
-  const timing = createHookTiming({ now: () => current, maxSamples: 2 });
+  const timing = createHookTiming({ now: () => current });
   assert.equal(await timing.wrap("before", async () => { await Promise.resolve(); current += 7; return undefined; })(), undefined);
   await assert.rejects(timing.wrap("after", async () => { current += 11; throw new Error("private-failure"); })(), /private-failure/);
   await timing.wrap("before", async () => { current += 3; })();
-  assert.deepEqual(timing.drain(), { samples: [{ phase: "before", durationMs: 7 }, { phase: "after", durationMs: 11 }], dropped: 1 });
-  assert.deepEqual(timing.drain(), { samples: [], dropped: 0 });
+  const drained = timing.drain();
+  assert.equal(drained.timingVersion, 2);
+  assert.equal(drained.dropped, 0);
+  assert.equal(drained.invalid, 0);
+  assert.deepEqual(drained.histograms.map((histogram) => histogram.counts.reduce((a, b) => a + b, 0)), [2, 1]);
+  assert.deepEqual(drained.histograms.map((histogram) => histogram.maxMs), [7, 11]);
+  assert.deepEqual(timing.drain(), { timingVersion: 2, histograms: [emptyTimingHistogram("before"), emptyTimingHistogram("after")], dropped: 0, invalid: 0 });
 });
 
 test("production timing persists only previous completed hook work, never tool duration", async () => {
@@ -54,8 +59,8 @@ test("production timing persists only previous completed hook work, never tool d
   await runtime.after({ toolName: "exec", toolCallId: "one", durationMs: 999999, result: "private-result" }, context);
   await runtime.before({ toolName: "exec", toolCallId: "two", params: {} }, context);
   const records = (await readFile(auditPath, "utf8")).trim().split("\n").map(JSON.parse);
-  assert.equal(records[0].observer.samples.length, 0);
-  assert.deepEqual(records[2].observer.samples.map((sample) => sample.phase), ["before", "after"]);
+  assert.equal(records[0].observer.histograms[0].maxMs, null);
+  assert.deepEqual(records[2].observer.histograms.map((histogram) => histogram.counts.reduce((a, b) => a + b, 0)), [1, 1]);
   const report = buildShadowReport(records);
   assert.equal(report.execution.durationMs.max, 999999);
   assert.equal(report.observer.hookOverheadMs.before.count, 1);
