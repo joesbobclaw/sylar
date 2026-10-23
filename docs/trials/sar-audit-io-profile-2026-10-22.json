@@ -1,0 +1,188 @@
+{
+  "sourceSha256": "1253d4663d47ddd6cf4c5d4a4d9190c379610ea98fdfd52e779694d6a08166ce",
+  "scope": "isolated synthetic filesystem/queue diagnostic; not production hook overhead",
+  "originalAlgorithmUnchanged": true,
+  "allRecordsAndModesVerified": true,
+  "results": [
+    {
+      "concurrency": 1,
+      "records": 512,
+      "elapsedMs": 159.825339,
+      "appendLatencyIncludingSerialQueue": {
+        "count": 512,
+        "totalMs": 159.57661599999977,
+        "p50Ms": 0.24077800000000593,
+        "p95Ms": 0.4234249999999946,
+        "maxMs": 20.527825
+      },
+      "filesystem": {
+        "mkdir": {
+          "count": 512,
+          "totalMs": 20.33865799999957,
+          "p50Ms": 0.035733000000007564,
+          "p95Ms": 0.06529600000000357,
+          "maxMs": 0.17537800000000914
+        },
+        "chmod": {
+          "count": 1024,
+          "totalMs": 35.739515000000345,
+          "p50Ms": 0.03056999999998311,
+          "p95Ms": 0.05734999999999957,
+          "maxMs": 0.29254899999999395
+        },
+        "stat": {
+          "count": 512,
+          "totalMs": 15.338192999999634,
+          "p50Ms": 0.02559099999999148,
+          "p95Ms": 0.05645300000000475,
+          "maxMs": 0.23286600000000135
+        },
+        "appendFile": {
+          "count": 512,
+          "totalMs": 83.00398100000011,
+          "p50Ms": 0.10770899999999983,
+          "p95Ms": 0.19704199999999616,
+          "maxMs": 20.124397000000002
+        }
+      },
+      "averagePerRecordIoMs": 0.3016022402343743,
+      "averageQueueAndJsMs": 0.01007083789062524,
+      "note": "Queue/JS residual is diagnostic approximation, not a production causal attribution. Instrumentation and host load affect timings."
+    },
+    {
+      "concurrency": 4,
+      "records": 512,
+      "elapsedMs": 124.483889,
+      "appendLatencyIncludingSerialQueue": {
+        "count": 512,
+        "totalMs": 496.29908699999976,
+        "p50Ms": 0.9500969999999711,
+        "p95Ms": 1.2971349999999688,
+        "maxMs": 2.071034999999995
+      },
+      "filesystem": {
+        "mkdir": {
+          "count": 512,
+          "totalMs": 18.692721999999378,
+          "p50Ms": 0.03208399999999756,
+          "p95Ms": 0.0563720000000103,
+          "maxMs": 0.1878269999999702
+        },
+        "chmod": {
+          "count": 1024,
+          "totalMs": 34.10006499999918,
+          "p50Ms": 0.02844300000003841,
+          "p95Ms": 0.07286400000000981,
+          "maxMs": 0.16078400000003512
+        },
+        "stat": {
+          "count": 512,
+          "totalMs": 13.600141000000121,
+          "p50Ms": 0.022132999999996628,
+          "p95Ms": 0.058400000000006,
+          "maxMs": 0.11377700000002733
+        },
+        "appendFile": {
+          "count": 512,
+          "totalMs": 54.17068700000007,
+          "p50Ms": 0.0912230000000136,
+          "p95Ms": 0.20438799999999446,
+          "maxMs": 0.34424699999999575
+        }
+      },
+      "averagePerRecordIoMs": 0.23547581054687255,
+      "averageQueueAndJsMs": 0.7338583437500019,
+      "note": "Queue/JS residual is diagnostic approximation, not a production causal attribution. Instrumentation and host load affect timings."
+    },
+    {
+      "concurrency": 16,
+      "records": 512,
+      "elapsedMs": 136.22890900000004,
+      "appendLatencyIncludingSerialQueue": {
+        "count": 512,
+        "totalMs": 2145.018649,
+        "p50Ms": 4.192972000000054,
+        "p95Ms": 5.332578000000012,
+        "maxMs": 5.837431999999978
+      },
+      "filesystem": {
+        "mkdir": {
+          "count": 512,
+          "totalMs": 21.44818899999916,
+          "p50Ms": 0.03608400000001666,
+          "p95Ms": 0.07894199999998364,
+          "maxMs": 0.20163800000000265
+        },
+        "chmod": {
+          "count": 1024,
+          "totalMs": 36.7492740000003,
+          "p50Ms": 0.0317630000000122,
+          "p95Ms": 0.06176999999996724,
+          "maxMs": 0.2744730000000004
+        },
+        "stat": {
+          "count": 512,
+          "totalMs": 15.124503999999888,
+          "p50Ms": 0.024220000000013897,
+          "p95Ms": 0.07110799999998108,
+          "maxMs": 0.1498640000000364
+        },
+        "appendFile": {
+          "count": 512,
+          "totalMs": 59.218565999999896,
+          "p50Ms": 0.1028320000000349,
+          "p95Ms": 0.20141100000000733,
+          "maxMs": 0.3262980000000084
+        }
+      },
+      "averagePerRecordIoMs": 0.2588682285156235,
+      "averageQueueAndJsMs": 3.9306213203125018,
+      "note": "Queue/JS residual is diagnostic approximation, not a production causal attribution. Instrumentation and host load affect timings."
+    },
+    {
+      "concurrency": 32,
+      "records": 512,
+      "elapsedMs": 123.03164799999996,
+      "appendLatencyIncludingSerialQueue": {
+        "count": 512,
+        "totalMs": 3825.8880300000046,
+        "p50Ms": 7.653944000000024,
+        "p95Ms": 8.481724999999983,
+        "maxMs": 8.748942999999997
+      },
+      "filesystem": {
+        "mkdir": {
+          "count": 512,
+          "totalMs": 18.36703000000159,
+          "p50Ms": 0.03361500000005435,
+          "p95Ms": 0.04434499999996433,
+          "maxMs": 0.13998900000001413
+        },
+        "chmod": {
+          "count": 1024,
+          "totalMs": 33.06072599999794,
+          "p50Ms": 0.029452999999989515,
+          "p95Ms": 0.04741099999995413,
+          "maxMs": 0.2714390000000435
+        },
+        "stat": {
+          "count": 512,
+          "totalMs": 13.895626000000846,
+          "p50Ms": 0.022725000000036744,
+          "p95Ms": 0.05768599999998969,
+          "maxMs": 0.16061400000000958
+        },
+        "appendFile": {
+          "count": 512,
+          "totalMs": 54.731976999999006,
+          "p50Ms": 0.09585500000002867,
+          "p95Ms": 0.19840800000008585,
+          "maxMs": 0.3260960000000068
+        }
+      },
+      "averagePerRecordIoMs": 0.2344831230468738,
+      "averageQueueAndJsMs": 7.237954435546885,
+      "note": "Queue/JS residual is diagnostic approximation, not a production causal attribution. Instrumentation and host load affect timings."
+    }
+  ]
+}

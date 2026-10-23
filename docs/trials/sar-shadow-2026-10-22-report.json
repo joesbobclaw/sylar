@@ -1,0 +1,189 @@
+{
+  "generatedAt": "2026-10-23T04:35:19.393Z",
+  "schemaVersion": 2,
+  "sample": {
+    "records": 19297,
+    "proposals": 9651,
+    "actuals": 9646,
+    "matureProposals": 9641
+  },
+  "pairing": {
+    "paired": 9637,
+    "unpaired": 4,
+    "rate": 0.9995851052795354,
+    "logicalProposals": 9641,
+    "logicalPaired": 9637,
+    "logicalRate": 0.9995851052795354,
+    "duplicateProposals": 0,
+    "duplicateRate": 0,
+    "graceMs": 60000
+  },
+  "coverage": {
+    "unknown": 3,
+    "unknownRate": 0.00031084861672365556,
+    "classifications": [
+      {
+        "value": "code_execution",
+        "count": 9035
+      },
+      {
+        "value": "file_write",
+        "count": 304
+      },
+      {
+        "value": "agent_spawn",
+        "count": 238
+      },
+      {
+        "value": "message_send",
+        "count": 60
+      },
+      {
+        "value": "automation_mutation",
+        "count": 9
+      },
+      {
+        "value": "unknown",
+        "count": 3
+      },
+      {
+        "value": "notification_send",
+        "count": 2
+      }
+    ],
+    "tools": [
+      {
+        "value": "exec",
+        "count": 7835
+      },
+      {
+        "value": "process",
+        "count": 1195
+      },
+      {
+        "value": "write",
+        "count": 277
+      },
+      {
+        "value": "sessions_spawn",
+        "count": 238
+      },
+      {
+        "value": "message",
+        "count": 40
+      },
+      {
+        "value": "sessions_send",
+        "count": 19
+      },
+      {
+        "value": "edit",
+        "count": 14
+      },
+      {
+        "value": "apply_patch",
+        "count": 13
+      },
+      {
+        "value": "openclawautomations",
+        "count": 7
+      },
+      {
+        "value": "openclawgateway_process",
+        "count": 3
+      },
+      {
+        "value": "automations",
+        "count": 2
+      },
+      {
+        "value": "openclaw_directheartbeat_respond",
+        "count": 2
+      },
+      {
+        "value": "openclawgateway_exec",
+        "count": 2
+      },
+      {
+        "value": "openclawportal",
+        "count": 2
+      },
+      {
+        "value": "openclaw_directsessions_yield",
+        "count": 1
+      },
+      {
+        "value": "openclawsessions_send",
+        "count": 1
+      }
+    ],
+    "aliasChanges": 18
+  },
+  "execution": {
+    "errors": 16,
+    "logicalOutcomes": [
+      {
+        "value": "completed",
+        "count": 9621
+      },
+      {
+        "value": "error",
+        "count": 16
+      },
+      {
+        "value": "outcome_unknown",
+        "count": 4
+      }
+    ],
+    "outcomeUnknown": 4,
+    "outcomeUnknownRate": 0.00041489472046468207,
+    "outcomeAccountingRate": 0.9995851052795354,
+    "durationMs": {
+      "p50": 512,
+      "p95": 1762,
+      "max": 600043
+    },
+    "note": "A mature proposal without a post-hook is outcome_unknown, never completed. Execution duration is tool runtime, not SAR hook overhead."
+  },
+  "privacy": {
+    "schemaDrift": [],
+    "invalidMode": 0
+  },
+  "observer": {
+    "hookOverheadMs": {
+      "before": {
+        "count": 11896,
+        "p50": 5,
+        "p95": 40,
+        "max": 908.162266000174
+      },
+      "after": {
+        "count": 11892,
+        "p50": 3,
+        "p95": 50,
+        "max": 887.5970290005207
+      }
+    },
+    "dropped": 0,
+    "invalid": 0,
+    "percentileMethod": "histogram-upper-bound",
+    "note": "Completed hook body wall time including awaited audit IO, excluding tool execution and Gateway scheduling. Fixed-size timing histograms (or legacy samples) are emitted on the next proposal; the final process tail is not persisted. Not paired-call percentiles or semantic reviewer latency."
+  },
+  "gates": {
+    "enoughTraffic": true,
+    "pairing": true,
+    "outcomeAccounting": true,
+    "duplicateHooks": true,
+    "classificationCoverage": true,
+    "schemaStable": true,
+    "shadowOnly": true,
+    "semanticLabels": false,
+    "hookOverheadMeasured": true,
+    "hookOverheadBudget": false
+  },
+  "verdict": "NOT_READY_FOR_ENFORCEMENT",
+  "blockers": [
+    "semantic-human-labels-not-yet-collected",
+    "production-overhead-budget-not-yet-evaluated"
+  ]
+}

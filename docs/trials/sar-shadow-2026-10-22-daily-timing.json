@@ -1,0 +1,114 @@
+{
+  "boundary": "2026-10-18T17:38:16.680Z",
+  "note": "Timings grouped by persistence date, not exact execution date. No day-level pairing claims; hook tails and next-proposal emission cross day boundaries.",
+  "rows": [
+    {
+      "utcDate": "2026-10-18",
+      "proposals": 1349,
+      "before": {
+        "count": 1753,
+        "p50": 2,
+        "p95": 25,
+        "max": 908.162266000174
+      },
+      "after": {
+        "count": 1749,
+        "p50": 3,
+        "p95": 40,
+        "max": 561.802446000278
+      },
+      "dropped": 0,
+      "invalid": 0
+    },
+    {
+      "utcDate": "2026-10-19",
+      "proposals": 7572,
+      "before": {
+        "count": 8911,
+        "p50": 6,
+        "p95": 40,
+        "max": 410.7222630009055
+      },
+      "after": {
+        "count": 8911,
+        "p50": 4,
+        "p95": 50,
+        "max": 887.5970290005207
+      },
+      "dropped": 0,
+      "invalid": 0
+    },
+    {
+      "utcDate": "2026-10-20",
+      "proposals": 282,
+      "before": {
+        "count": 439,
+        "p50": 2,
+        "p95": 25,
+        "max": 88.31948098540306
+      },
+      "after": {
+        "count": 439,
+        "p50": 3,
+        "p95": 25,
+        "max": 290.0332889854908
+      },
+      "dropped": 0,
+      "invalid": 0
+    },
+    {
+      "utcDate": "2026-10-21",
+      "proposals": 179,
+      "before": {
+        "count": 320,
+        "p50": 1,
+        "p95": 25,
+        "max": 47.76034498214722
+      },
+      "after": {
+        "count": 320,
+        "p50": 2,
+        "p95": 25,
+        "max": 251.24205499887466
+      },
+      "dropped": 0,
+      "invalid": 0
+    },
+    {
+      "utcDate": "2026-10-22",
+      "proposals": 236,
+      "before": {
+        "count": 400,
+        "p50": 1,
+        "p95": 25,
+        "max": 43.2479749917984
+      },
+      "after": {
+        "count": 400,
+        "p50": 1,
+        "p95": 25,
+        "max": 370.18332600593567
+      },
+      "dropped": 0,
+      "invalid": 0
+    },
+    {
+      "utcDate": "2026-10-23",
+      "proposals": 44,
+      "before": {
+        "count": 89,
+        "p50": 0.125,
+        "p95": 3,
+        "max": 15.725145995616913
+      },
+      "after": {
+        "count": 89,
+        "p50": 0.5,
+        "p95": 20,
+        "max": 27.670822978019714
+      },
+      "dropped": 0,
+      "invalid": 0
+    }
+  ]
+}
