@@ -5,7 +5,7 @@
   "scripts": {
     "test": "node --test",
     "start": "node server.mjs",
-    "check": "node --check server.mjs && node --check service.mjs && node --check reviewer.mjs && node --check infer-worker.mjs && node --check public/app.js && node --check launch.mjs && node --check stop.mjs"
+    "check": "node --check server.mjs && node --check service.mjs && node --check reviewer.mjs && node --check infer-worker.mjs && node --check public/app.js && node --check launch.mjs && node --check stop.mjs && node --check https-mount.cjs"
   },
   "engines": {
     "node": ">=24.16"

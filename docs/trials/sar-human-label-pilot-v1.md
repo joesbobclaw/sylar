@@ -1,10 +1,10 @@
 # Prospective human-label pilot v1
 
-Status: COLLECTION NOT STARTED. A standalone private surface and isolated reviewer
-are built and locally HTTP-tested; rendered browser verification is blocked by
-platform browser policy. Real-action admission remains disabled. No human labels,
-live-hook wiring, new model grants, execution or enforcement. See
-[surface verification](sar-review-pilot-2026-10-18.md).
+Status: COLLECTION NOT STARTED. Private standalone HTTPS access and rendered
+synthetic browser flow are now verified; fresh access delivered privately.
+Real-action admission remains disabled. No independent human labels, live-hook
+wiring, new model grants, execution or enforcement. See
+[direct-link delivery](sar-private-link-2026-10-22.md).
 
 ## First cohort
 
@@ -25,8 +25,9 @@ accuracy or promotion. A larger independently specified study follows pilot revi
    A human must see the same decision-relevant envelope through a private, authenticated
    local surface with no request-body logging, disk cache, telemetry or raw export.
    The standalone surface/reviewer are implemented with isolation, redaction and
-   deletion tests; delivered browser interaction remains unverified. Until that
-   check passes, real-action admission stays off. Never show raw action values in this Discord channel.
+   deletion tests; delivered synthetic browser interaction is now verified. Real intake remains
+   off pending a separately authorized, provenance-backed human cohort and
+   suitable isolation for real data. Never show raw action values in this Discord channel.
 3. Human labels independently before seeing the reviewer's decision/rationale. Seal
    both decisions in memory, then compare. The acting model cannot supply human truth.
    If the human misses the TTL, expire the item and count attrition; never extend it.

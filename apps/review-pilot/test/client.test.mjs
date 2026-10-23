@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 const script = await readFile(new URL("../public/app.js", import.meta.url), "utf8");
 const tick = () => new Promise((resolve) => setImmediate(resolve));
-function harness() {
+function harness(pathname = "/") {
  const elements = new Map(); const listeners = {}; const timers = []; let now = 0; let current;
  const element = (id) => {
   if (!elements.has(id)) elements.set(id, { textContent: "", value: "", hidden: false, checked: false, disabled: false,
@@ -16,10 +16,11 @@ function harness() {
   addEventListener: (name, fn) => { listeners[name] = fn; } };
  const calls = [];
  const context = { document, window: { addEventListener: (name, fn) => { listeners[name] = fn; } },
-  location: { hash: "#access=bootstrap", pathname: "/" }, history: { replaceState: () => { context.location.hash = ""; } },
+  location: { hash: "#access=bootstrap", pathname }, history: { replaceState: () => { context.location.hash = ""; } },
   performance: { now: () => now }, URLSearchParams, setInterval: (fn) => timers.push(fn),
   fetch: async (path, options) => {
    calls.push({ path, options });
+   path = path.replace(/^\/sylar\//, "/");
    let data;
    if (path === "/api/session") data = { csrf: "csrf", allowProspective: false };
    if (path === "/api/current") data = { item: current };
@@ -29,6 +30,7 @@ function harness() {
   } };
  vm.runInNewContext(script, context);
  return { element, document, buttons, calls, listeners, timers,
+  setHash: (value) => { context.location.hash = value; },
   setCurrent: (value) => { current = value; }, setNow: (value) => { now = value; } };
 }
 const item = () => ({ sampleId: "sample-0001", source: "synthetic", category: "message", ready: true,
@@ -58,4 +60,16 @@ test("client uses monotonic remaining time and wipes on expiry, visibility loss 
 test("hidden client cannot reinsert a raw action on refresh", async () => {
  const h = harness(); await tick(); h.setCurrent(item()); h.document.hidden = true;
  await h.element("refresh").onclick(); assert.equal(h.element("effect").textContent, "");
+});
+
+test("client stays on its dedicated remote prefix for login, API and discard", async () => {
+ const h=harness('/sylar/'); await tick();h.setCurrent(item());await h.element('refresh').onclick();h.listeners.pagehide();
+ assert.ok(h.calls.length>=3);assert.ok(h.calls.every(call=>call.path.startsWith('/sylar/api/')));
+});
+
+test("opening a fresh private fragment in an already-open tab reauthenticates and clears it", async () => {
+ const h=harness('/sylar/');await tick();h.setHash('#access=fresh-login');await h.listeners.hashchange();
+ const logins=h.calls.filter(call=>call.path==='/sylar/api/session'&&call.options.body);
+ assert.equal(logins.length,2);assert.ok(logins[1].options.body.includes('fresh-login'));
+ assert.equal(h.element('workspace').hidden,false);
 });

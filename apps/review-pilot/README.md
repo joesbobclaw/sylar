@@ -7,14 +7,21 @@ not a chat agent, Gateway agent session, tools, MCP, or a subagent.
 
 ## Current delivery
 
-A private Portal named **Sylar · Private review** is allocated in Control UI →
-Portals. No bearer URL or login code belongs in a group message or this repository.
-Real-action admission is **disabled** in the delivered launcher: browser navigation
-was blocked by the platform policy, so delivered rendering remains unverified.
-The human can try the synthetic example privately to verify the screen. Synthetic
-labels never count toward real semantic accuracy. No human pilot has started.
-Remote reachability is unverified; without private portal ingress, the allocated
-route is a local-host preview, not remote hosting.
+Standalone private HTTPS access is deployed at the existing shared host's `/sylar/`
+path. No Control UI, Portal, new account or dashboard navigation is required.
+The login link is delivered privately; keep its fragment credential out of group
+messages, source control and screenshots. Fresh links are single-use, expire after
+30 minutes, and establish a 30-minute HttpOnly/Secure/SameSite=Strict session.
+Reopening a link with its still-valid session is permitted but never extends expiry.
+All authenticated reads as well as writes require the in-memory CSRF/view header;
+a cookie alone cannot read effect data or retrieve that header. Frame embedding is
+blocked, and other cookies on the shared host are not forwarded to the backend.
+
+Real-action admission remains **disabled**. Only a synthetic engineering example is
+available; no human pilot or real-data study has started. This shared-host demo is
+not a claim of separate-origin isolation for future sensitive real-action intake.
+No DNS, Cloudflare Access policy, or tunnel configuration was changed. Protection
+is the application's one-time credential and expiring session, not an edge login.
 
 ## Security and lifecycle
 
@@ -57,9 +64,11 @@ route is a local-host preview, not remote hosting.
 
 ## Run and stop
 
-Allocate a Portal with port18794 before starting the server. Keep returned launch
-URLs private. Write an ignored `.tmp/review-pilot/launch.json` containing a random
-`bootKey` and the exact returned token-free `publicUrl`. `launch.mjs` reads them
+Use the existing shared HTTPS host with the dedicated prefix mount in
+`deploy/task-board-sylar-mount.patch` (before its JSON parser). It forwards only that
+prefix to the loopback18794 backend; all existing host routes remain unchanged.
+Write an ignored `.tmp/review-pilot/launch.json` containing a fresh random `bootKey`
+and its HTTPS `publicUrl` ending in `/sylar/` (no secret in that public URL). `launch.mjs` reads them
 without printing credentials. It sets `PORT`/`PUBLIC_URL`, binds only127.0.0.1, uses
 the installed OpenClaw CLI module and the existing `openai/gpt-5.6-luna` model.
 No new account, model permission, or Gateway config is granted.
@@ -70,17 +79,17 @@ node apps/review-pilot/launch.mjs
 ```
 
 For another installation, set the installed CLI module in `launch.mjs` or use
-`OPENCLAW_CLI_MODULE` with `server.mjs`. Parent frame origin must match Control UI;
-if different-site cookie/embedding is blocked, use its private Portal new-tab launch.
+`OPENCLAW_CLI_MODULE` with `server.mjs`. The standalone screen does not allow embedding. A fresh link contains only its
+bootstrap credential in the fragment, which the client removes immediately;
+hash-only navigation in an already-open tab explicitly reauthenticates.
 No DNS/ingress/auth changes are made by this application.
 
 ```sh
 node apps/review-pilot/stop.mjs
 ```
 
-Stop checks the recorded process identity before signaling. Close its Portal in
-Control UI to withdraw the proxy route; stopping the app alone leaves a waiting
-route, not a running raw-data service. The Gateway SAR observer is unchanged.
+Stop checks the recorded process identity before signaling. Remove the host-local prefix mount (or apply its backed-up rollback) to withdraw
+the HTTPS path. Stopping the app alone leaves a502, not a running raw-data service. The Gateway SAR observer is unchanged.
 Restart starts a new study/file, drops all pending raw data and rotates session/
 CSRF/ingest credentials. Stored metadata from prior runs is kept separate. A crash
 can lose final aggregate counters; do not infer missing pending items were labelled.
@@ -89,10 +98,12 @@ can lose final aggregate counters; do not infer missing pending items were label
 
 `npm --prefix apps/review-pilot test` tests the actual client script in an offline
 DOM harness, service lifecycle and HTTP boundaries. This does not substitute for
-rendered-browser verification. See `docs/trials/sar-review-pilot-2026-10-18.md`.
+rendered-browser verification. See `docs/trials/sar-private-link-2026-10-22.md` for actual rendered HTTPS checks
+and `docs/trials/sar-review-pilot-2026-10-18.md` for historical implementation checks.
 
-The production launcher's synthetic-only gate must remain off for real values until
-the private delivered screen has passed a hands-on check. The live observer remains
+The production launcher remains synthetic-only. Rendered synthetic browser
+verification is complete, but real intake still needs a separately authorized,
+provenance-backed human cohort and isolation suitable for real action data. The live observer remains
 fully disconnected from this manual ingestion service. Connecting automatic
 prospective capture is separate work requiring trusted normalization/consent context;
 manual copies alone do not prove authentic live provenance.

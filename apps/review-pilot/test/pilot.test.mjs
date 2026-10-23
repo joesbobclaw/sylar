@@ -85,12 +85,12 @@ test("HTTP prevents pre-label disclosure, unauth reads, cross-origin/CSRF writes
  assert.equal((await post("/api/admit", admission(), { Cookie: cookie })).status, 403);
  assert.equal((await post("/api/admit", admission(), { ...headers, Origin: "https://attacker.invalid" })).status, 403);
  assert.equal((await post("/api/admit", admission(), headers)).status, 200);
- const current = await (await fetch(base + "/api/current", { headers: { Cookie: cookie } })).json();
+ const current = await (await fetch(base + "/api/current", { headers: { Cookie: cookie, "X-Pilot-CSRF": csrf } })).json();
  assert.ok(current.item.effect); assert.equal(JSON.stringify(current).includes('"deny"'), false);
  assert.equal((await post("/api/label", { sampleId: current.item.sampleId, decision: "allow", humanIndependent: true, rationale: "private-bad-key" }, headers)).status, 400);
  const label = await post("/api/label", { sampleId: current.item.sampleId, decision: "allow", humanIndependent: true }, headers);
  assert.equal(label.status, 200); assert.equal((await label.json()).reviewerDecision, "deny");
- assert.equal((await (await fetch(base + "/api/current", { headers: { Cookie: cookie } })).json()).item, null);
+ assert.equal((await (await fetch(base + "/api/current", { headers: { Cookie: cookie, "X-Pilot-CSRF": csrf } })).json()).item, null);
  const oversized = await post("/api/admit", { effect: "private-size-marker".repeat(20000) }, headers);
  assert.equal(oversized.status, 413); assert.equal((await oversized.text()).includes("private-size-marker"), false);
 });
@@ -136,4 +136,37 @@ test("HTTP intake bounds concurrent raw request bodies before buffering", async 
  }
  const fifth = await fetch(base + "/api/session", { method: "POST", headers: { "Content-Type": "application/json", Origin: "http://127.0.0.1" }, body: JSON.stringify({ key: app.bootKey }) });
  assert.equal(fifth.status, 429);
+});
+
+test("remote mount scopes assets, cookie and APIs; links are single-use and sessions expire", async (t) => {
+ let clock = 100;
+ const app = createPilotServer({reviewer:async()=>({outcome:'deny'}), publicUrl:'https://review.example.invalid/sylar/',
+   now:()=>clock,bootTtlMs:50,sessionTtlMs:1000});
+ await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
+ t.after(()=>{app.service.shutdown();app.server.closeAllConnections();app.server.close();});
+ const base=`http://127.0.0.1:${app.server.address().port}`;
+ const post=()=>fetch(base+'/sylar/api/session',{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://review.example.invalid'},body:JSON.stringify({key:app.bootKey})});
+ assert.equal((await fetch(base+'/')).status,404);
+ assert.equal((await fetch(base+'/sylar/app.js')).status,200);
+ assert.equal((await fetch(base+'/sylar/api/current')).status,401);
+ const first=await post();assert.equal(first.status,200);
+ const {csrf}=await first.json();
+ const setCookie=first.headers.get('set-cookie');
+ assert.ok(setCookie.includes('Path=/sylar/'));assert.ok(setCookie.includes('Secure'));assert.ok(setCookie.includes('HttpOnly'));assert.ok(setCookie.includes('SameSite=Strict'));
+ const cookie=setCookie.split(';')[0];
+ assert.equal((await post()).status,401);
+ assert.equal((await fetch(base+'/sylar/api/current',{headers:{Cookie:cookie}})).status,401);
+ assert.equal((await fetch(base+'/sylar/api/current',{headers:{Cookie:cookie,'X-Pilot-CSRF':csrf}})).status,200);
+ clock=1101;
+ assert.equal((await fetch(base+'/sylar/api/current',{headers:{Cookie:cookie,'X-Pilot-CSRF':csrf}})).status,401);
+});
+
+test("an unused access link expires without disclosing or admitting any action", async (t)=>{
+ let clock=0;
+ const app=createPilotServer({reviewer:async()=>({outcome:'deny'}),publicUrl:'https://review.example.invalid/sylar/',now:()=>clock,bootTtlMs:10});
+ await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
+ t.after(()=>{app.service.shutdown();app.server.closeAllConnections();app.server.close();});
+ clock=11;
+ const response=await fetch(`http://127.0.0.1:${app.server.address().port}/sylar/api/session`,{method:'POST',headers:{'Content-Type':'application/json',Origin:'https://review.example.invalid'},body:JSON.stringify({key:app.bootKey})});
+ assert.equal(response.status,401);assert.equal(app.service.report().active,false);
 });

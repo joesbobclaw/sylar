@@ -1,0 +1,36 @@
+{
+  "syntheticOnly": true,
+  "browserFlowVerified": true,
+  "blindBeforeLabel": true,
+  "result": "You: deny. Reviewer: deny. Agreement.",
+  "rawGoneAfterLabel": true,
+  "fragmentCleared": true,
+  "independentHumanLabels": 0,
+  "freshCredentialPrivatelyDelivered": true,
+  "oneUseLinkTtlMinutes": 30,
+  "sessionTtlMinutes": 30,
+  "previousTestCredentialRotated": true,
+  "existingHostRootUnchanged": true,
+  "http": {
+    "/": {
+      "status": 200,
+      "sha256": "4a2c3eb934b18882173e9adb1c262b0e1986f74095383c73f6ccfab91351acea",
+      "cacheControl": null
+    },
+    "/sylar/": {
+      "status": 200,
+      "sha256": "0c945999c015485162e0c7ed012f36520ca917ef4e6951f1463a9a041d09f76d",
+      "cacheControl": "no-store, max-age=0"
+    },
+    "/sylar/app.js": {
+      "status": 200,
+      "sha256": "8806daa2c0480688425ff7977b294ad1d95419716d1ae2b88bc4cdc23e0b6432",
+      "cacheControl": "no-store, max-age=0"
+    },
+    "/sylar/api/current": {
+      "status": 401,
+      "sha256": "b4d901ef5d07d68e155702755476a038827b9fecedf6d98287728f092d2b2f79",
+      "cacheControl": "no-store, max-age=0"
+    }
+  }
+}

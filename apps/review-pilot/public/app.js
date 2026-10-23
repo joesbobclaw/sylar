@@ -1,13 +1,14 @@
+const basePath = location.pathname.endsWith("/") ? location.pathname : `${location.pathname}/`;
 let csrf = "";
 let item = null;
 let busy = false;
 const $ = (id) => document.getElementById(id);
 const rawClear = () => { item = null; $("effect").textContent = ""; $("prepared").value = ""; $("review").hidden = true; };
 async function api(path, body) {
-  const response = await fetch(`/api/${path}`, { method: body === undefined ? "GET" : "POST",
+  const response = await fetch(`${basePath}api/${path}`, { method: body === undefined ? "GET" : "POST",
     cache: "no-store", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Pilot-CSRF": csrf },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
-  if (!response.ok) throw new Error("Request not accepted. Refresh or reopen the private portal.");
+  if (!response.ok) throw new Error("Request not accepted. Reopen your private link or ask Bob for a fresh one.");
   return response.json();
 }
 function setStatus(text) { $("status").textContent = text; }
@@ -64,7 +65,7 @@ document.querySelectorAll("[data-decision]").forEach((button) => { button.onclic
 }); });
 const discard = () => {
   rawClear();
-  if (csrf) fetch("/api/cancel", { method: "POST", credentials: "same-origin", keepalive: true,
+  if (csrf) fetch(`${basePath}api/cancel`, { method: "POST", credentials: "same-origin", keepalive: true,
     headers: { "Content-Type": "application/json", "X-Pilot-CSRF": csrf }, body: "{}" }).catch(() => {});
 };
 window.addEventListener("pagehide", discard);
@@ -75,9 +76,10 @@ setInterval(() => {
   if (seconds <= 0) { discard(); setStatus("Action expired and discarded"); }
   else $("countdown").textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")} remaining`;
 }, 250);
-(async () => {
+async function authenticate() {
   const key = new URLSearchParams(location.hash.slice(1)).get("access");
   history.replaceState(null, "", location.pathname);
+  if (key) { discard(); csrf = ""; }
   try {
     const session = key ? await api("session", { key }) : await api("session");
     csrf = session.csrf;
@@ -85,5 +87,10 @@ setInterval(() => {
     $("workspace").hidden = false;
     if (!session.allowProspective) $("source").querySelector('[value="prospective"]').disabled = true;
     await refresh();
-  } catch { $("locked").querySelector("p").textContent = "Session expired or unavailable. Reopen the private portal."; }
-})();
+  } catch {
+    rawClear(); $("workspace").hidden = true; $("locked").hidden = false;
+    $("locked").querySelector("p").textContent = "This private link has expired or is unavailable. Ask Bob for a fresh link.";
+  }
+}
+window.addEventListener("hashchange", authenticate);
+authenticate();

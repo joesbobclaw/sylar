@@ -1,0 +1,8 @@
+--- a/api/index.js
++++ b/api/index.js
+@@ -1,3 +1,5 @@
+ const express = require('express');
+ const app = express();
++// Private Sylar app: isolated prefix, auth handled by its own backend.
++app.use('/sylar', require('../../sylar/apps/review-pilot/https-mount.cjs'));
+ app.use(express.json());

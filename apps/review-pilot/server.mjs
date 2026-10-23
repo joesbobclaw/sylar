@@ -8,20 +8,28 @@ import { createReviewer } from "./reviewer.mjs";
 
 const same = (a, b) => typeof a === "string" && Buffer.byteLength(a) === Buffer.byteLength(b) && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 export function createPilotServer({ reviewer, publicUrl, parentOrigin, bootKey = randomBytes(32).toString("hex"), ingestKey = randomBytes(32).toString("hex"), persist,
-  allowProspective = false, ttlMs } = {}) {
+  allowProspective = false, ttlMs, now = Date.now, bootTtlMs = 30 * 60000, sessionTtlMs = 30 * 60000 } = {}) {
   const csrf = randomBytes(32).toString("hex");
   const cookie = randomBytes(32).toString("hex");
-  const origin = new URL(publicUrl).origin;
+  const publicAddress = new URL(publicUrl);
+  const origin = publicAddress.origin;
+  const basePath = publicAddress.pathname.endsWith("/") ? publicAddress.pathname : `${publicAddress.pathname}/`;
+  const bootExpiresAt = now() + bootTtlMs;
+  let bootUsed = false;
+  let sessionExpiresAt = 0;
   const service = new PilotService({ reviewer, persist, allowProspective, ttlMs });
   let bodyReaders = 0;
   const assets = { "/": ["index.html", "text/html"], "/app.js": ["app.js", "text/javascript"], "/style.css": ["style.css", "text/css"] };
   const server = createServer(async (req, res) => {
-    const path = new URL(req.url, "http://localhost").pathname;
+    const requestPath = new URL(req.url, "http://localhost").pathname;
+    const path = requestPath.startsWith(basePath) ? `/${requestPath.slice(basePath.length)}` : null;
     const headers = { "Cache-Control": "no-store, max-age=0", "Pragma": "no-cache",
       "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff",
-      "Cross-Origin-Resource-Policy": "same-origin", "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
-      "Content-Security-Policy": `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'self' ${parentOrigin ? new URL(parentOrigin).origin : ""}` };
+      "Cross-Origin-Resource-Policy": "same-origin", "Cross-Origin-Opener-Policy": "same-origin", "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Content-Security-Policy": `default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors ${parentOrigin ? "'self' " + new URL(parentOrigin).origin : "'none'"}` };
     const reply = (status, data) => { if (!res.headersSent) res.writeHead(status, { ...headers, "Content-Type": "application/json" }); res.end(JSON.stringify(data)); };
+    if (basePath !== "/" && requestPath === basePath.slice(0, -1)) { res.writeHead(308, { ...headers, Location: basePath }); res.end(); return; }
+    if (!path) { reply(404, { error: "not_found" }); return; }
     let bodySlot = false;
     try {
       if (req.method === "GET" && assets[path]) {
@@ -31,10 +39,10 @@ export function createPilotServer({ reviewer, publicUrl, parentOrigin, bootKey =
         return;
       }
       const cookies = Object.fromEntries((req.headers.cookie ?? "").split(";").map((part) => part.trim().split("=")));
-      const authenticated = same(cookies.pilot, cookie);
+      const authenticated = same(cookies.pilot, cookie) && now() < sessionExpiresAt;
       const ingest = same(req.headers.authorization, `Bearer ${ingestKey}`);
       if (req.method === "GET") {
-        if (!authenticated) { reply(401, { error: "locked" }); return; }
+        if (!authenticated || !same(req.headers["x-pilot-csrf"], csrf)) { reply(401, { error: "locked" }); return; }
         if (path === "/api/current") reply(200, { item: service.current() });
         else if (path === "/api/session") reply(200, { csrf, allowProspective });
         else if (path === "/api/report") reply(200, service.report());
@@ -57,8 +65,9 @@ export function createPilotServer({ reviewer, publicUrl, parentOrigin, bootKey =
       }
       const body = JSON.parse(Buffer.concat(chunks).toString("utf8"));
       if (path === "/api/session") {
-        if (!same(body.key, bootKey)) { reply(401, { error: "locked" }); return; }
-        res.setHeader("Set-Cookie", `pilot=${cookie}; HttpOnly; Path=/; SameSite=${origin.startsWith("https:") ? "None; Secure" : "Strict"}`);
+        if (!same(body.key, bootKey) || (!authenticated && (bootUsed || now() >= bootExpiresAt))) { reply(401, { error: "link_expired" }); return; }
+        if (!authenticated) { bootUsed = true; sessionExpiresAt = now() + sessionTtlMs; }
+        res.setHeader("Set-Cookie", `pilot=${cookie}; HttpOnly; Path=${basePath}; Max-Age=${Math.max(0, Math.floor((sessionExpiresAt - now()) / 1000))}; SameSite=Strict${origin.startsWith("https:") ? "; Secure" : ""}`);
         reply(200, { csrf, allowProspective });
       } else if (path === "/api/admit") {
         if (!body || Object.keys(body).sort().join(",") !== "category,effect,source") { reply(400, { error: "admission_rejected" }); return; }
